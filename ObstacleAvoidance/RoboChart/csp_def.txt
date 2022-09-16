@@ -1,0 +1,12 @@
+-- not generate Types_UpdateValue
+PriorityType_value( (x, priority) ) = x
+PriorityType_priority( (x, priority) ) = priority
+Types_UpdateValue(value,newValue) =  (PriorityType_priority(newValue) >= PriorityType_priority(value))
+
+
+sequence_toolkit_concat(s,t) = if length(s) < 2 then s^t else s
+
+-- Tail of empty empty as guards not respected.
+sequence_toolkit_tail(<>) = <>
+
+LSeq(Types_Skills,3)

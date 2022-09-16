@@ -1,0 +1,1599 @@
+	module Executive_Executive
+		shared_variable_events = {|
+		|}		
+		
+	exports
+		transparent diamond
+		transparent sbisim
+		transparent chase
+
+	
+		-- declaring call and ret events for undefined operations
+	
+	
+	
+		module Simple
+		exports
+			-- flow channels
+			channel internal__ : TIDS
+			channel enteredV, enterV, exitV, exitedV : SIDS
+			channel enter, entered: SIDS.SIDS
+			channel exit,exited: SIDS.SIDS
+			channel terminate
+			
+			-- variable channels
+			channel get_currentlyActiveSkills, set_currentlyActiveSkills: Set(Types_Skills)
+			channel get_monitor, set_monitor: Types_Events
+					
+			-- shared variable channels
+			
+			-- local variable channels for defined operations that are required by the state machine
+			
+			-- declaring state machine events
+			channel getExploreMaxSpeedParameter__: TIDS.InOut
+			channel getExploreMaxSpeedParameter: InOut
+			channel deactivate__: TIDS.InOut.Types_Skills
+			channel deactivate: InOut.Types_Skills
+			channel setExplorePriorityParameter__: TIDS.InOut.core_nat
+			channel setExplorePriorityParameter: InOut.core_nat
+			channel activate__: TIDS.InOut.Types_Skills
+			channel activate: InOut.Types_Skills
+			channel setMovePriorityParameter__: TIDS.InOut.core_nat
+			channel setMovePriorityParameter: InOut.core_nat
+			channel getActiveSkills__: TIDS.InOut
+			channel getActiveSkills: InOut
+			channel setExploreMaxSpeedParameter__: TIDS.InOut.core_real
+			channel setExploreMaxSpeedParameter: InOut.core_real
+			channel getExploreVOutValue__: TIDS.InOut
+			channel getExploreVOutValue: InOut
+			channel getMovePriorityParameter__: TIDS.InOut
+			channel getMovePriorityParameter: InOut
+			channel getExplorePriorityParameter__: TIDS.InOut
+			channel getExplorePriorityParameter: InOut
+			channel initiateEventMonitor__: TIDS.InOut.Types_Events
+			channel initiateEventMonitor: InOut.Types_Events
+			channel stopEventMonitor__: TIDS.InOut.Types_Events
+			channel stopEventMonitor: InOut.Types_Events
+			channel exploreVOutValue__: TIDS.InOut.Types_Velocities
+			channel exploreVOutValue: InOut.Types_Velocities
+			channel movePriorityParameter__: TIDS.InOut.core_nat
+			channel movePriorityParameter: InOut.core_nat
+			channel explorePriorityParameter__: TIDS.InOut.core_nat
+			channel explorePriorityParameter: InOut.core_nat
+			channel activeSkills__: TIDS.InOut.Set(Types_Skills)
+			channel activeSkills: InOut.Set(Types_Skills)
+			channel eventReply__: TIDS.InOut.Types_Events
+			channel eventReply: InOut.Types_Events
+			channel exploreMaxSpeedParameter__: TIDS.InOut.core_real
+			channel exploreMaxSpeedParameter: InOut.core_real
+			
+			-- declaring call and ret events for undefined operations
+			
+			-- Only the undefined operations are declared here.
+			-- If the state machine is in isolation, all required operations will be undefined.
+			-- If it is in the context of a controller, the required operations not provided by the
+			-- controller will be declared here, and the defined operations will be defined in the
+			-- context of the Controller module, and therefore within scope of the state machien module.
+			
+			
+			-- definition of functions used to expose flow channels
+			ShowEvents(P,E) = P[[ entered.x____.y____ <- enteredV.y____ | entered.x____.y____ <- E]]
+							   [[ enter.x____.y____ <- enterV.y____ | enter.x____.y____ <- E]]
+							   [[ exit.x____.y____ <- exitV.y____ | exit.x____.y____ <- E]]
+							   [[ exited.x____.y____ <- exitedV.y____ | exited.x____.y____ <- E ]]
+								 
+			ShowEnteredV(P) = P[[ entered.x____.y____ <- enteredV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+			ShowEnterV(P) = P[[ enter.x____.y____ <- enterV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+			ShowExitV(P) = P[[ exit.x____.y____ <- exitV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+			ShowExitedV(P) = P[[ exited.x____.y____ <- exitedV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+			ShowV(P) = P[[ entered.x____.y____ <- enteredV.y____ | x____ <- SIDS, y____ <- SIDS]]
+						[[ enter.x____.y____ <- enterV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+						[[ exit.x____.y____ <- exitV.y____ | x____ <- SIDS, y____ <- SIDS]]
+						[[ exited.x____.y____ <- exitedV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+			
+			-- declaring identifiers of state and final states
+			datatype SIDS = SID_Simple
+			              | SID_Simple_InitialiseSkills
+			              | SID_Simple_InitialiseMonitors
+			              | SID_Simple_Exploring
+			              | SID_Simple_CheckMonitor
+			              | SID_Simple_WaitForAllSkills
+			
+			-- declaring identifiers of transitions
+			datatype TIDS = NULLTRANSITION__
+			              | TID_Simple_t0
+			              | TID_Simple_t1
+			              | TID_Simple_t2
+			              | TID_Simple_t3
+			              | TID_Simple_t4
+			              | TID_Simple_t5
+			              | TID_Simple_t6
+			              | TID_Simple_t7
+			
+			-- declaring identifiers of transitions that can interupt a state (excludes transitions from junctions)
+			
+			ITIDS = {
+				TID_Simple_t1,	TID_Simple_t2,	TID_Simple_t3,	TID_Simple_t4,	TID_Simple_t5,	TID_Simple_t6,	TID_Simple_t7
+			}
+			
+			int_int = {|
+				getExploreMaxSpeedParameter__.TID_Simple_t1,
+				deactivate__.TID_Simple_t1,
+				setExplorePriorityParameter__.TID_Simple_t1,
+				activate__.TID_Simple_t1,
+				setMovePriorityParameter__.TID_Simple_t1,
+				getActiveSkills__.TID_Simple_t1,
+				setExploreMaxSpeedParameter__.TID_Simple_t1,
+				getExploreVOutValue__.TID_Simple_t1,
+				getMovePriorityParameter__.TID_Simple_t1,
+				getExplorePriorityParameter__.TID_Simple_t1,
+				initiateEventMonitor__.TID_Simple_t1,
+				stopEventMonitor__.TID_Simple_t1,
+				exploreVOutValue__.TID_Simple_t1,
+				movePriorityParameter__.TID_Simple_t1,
+				explorePriorityParameter__.TID_Simple_t1,
+				activeSkills__.TID_Simple_t1,
+				eventReply__.TID_Simple_t1,
+				exploreMaxSpeedParameter__.TID_Simple_t1,
+				internal__.TID_Simple_t1,
+				getExploreMaxSpeedParameter__.TID_Simple_t2,
+				deactivate__.TID_Simple_t2,
+				setExplorePriorityParameter__.TID_Simple_t2,
+				activate__.TID_Simple_t2,
+				setMovePriorityParameter__.TID_Simple_t2,
+				getActiveSkills__.TID_Simple_t2,
+				setExploreMaxSpeedParameter__.TID_Simple_t2,
+				getExploreVOutValue__.TID_Simple_t2,
+				getMovePriorityParameter__.TID_Simple_t2,
+				getExplorePriorityParameter__.TID_Simple_t2,
+				initiateEventMonitor__.TID_Simple_t2,
+				stopEventMonitor__.TID_Simple_t2,
+				exploreVOutValue__.TID_Simple_t2,
+				movePriorityParameter__.TID_Simple_t2,
+				explorePriorityParameter__.TID_Simple_t2,
+				activeSkills__.TID_Simple_t2,
+				eventReply__.TID_Simple_t2,
+				exploreMaxSpeedParameter__.TID_Simple_t2,
+				internal__.TID_Simple_t2,
+				getExploreMaxSpeedParameter__.TID_Simple_t3,
+				deactivate__.TID_Simple_t3,
+				setExplorePriorityParameter__.TID_Simple_t3,
+				activate__.TID_Simple_t3,
+				setMovePriorityParameter__.TID_Simple_t3,
+				getActiveSkills__.TID_Simple_t3,
+				setExploreMaxSpeedParameter__.TID_Simple_t3,
+				getExploreVOutValue__.TID_Simple_t3,
+				getMovePriorityParameter__.TID_Simple_t3,
+				getExplorePriorityParameter__.TID_Simple_t3,
+				initiateEventMonitor__.TID_Simple_t3,
+				stopEventMonitor__.TID_Simple_t3,
+				exploreVOutValue__.TID_Simple_t3,
+				movePriorityParameter__.TID_Simple_t3,
+				explorePriorityParameter__.TID_Simple_t3,
+				activeSkills__.TID_Simple_t3,
+				eventReply__.TID_Simple_t3,
+				exploreMaxSpeedParameter__.TID_Simple_t3,
+				internal__.TID_Simple_t3,
+				getExploreMaxSpeedParameter__.TID_Simple_t4,
+				deactivate__.TID_Simple_t4,
+				setExplorePriorityParameter__.TID_Simple_t4,
+				activate__.TID_Simple_t4,
+				setMovePriorityParameter__.TID_Simple_t4,
+				getActiveSkills__.TID_Simple_t4,
+				setExploreMaxSpeedParameter__.TID_Simple_t4,
+				getExploreVOutValue__.TID_Simple_t4,
+				getMovePriorityParameter__.TID_Simple_t4,
+				getExplorePriorityParameter__.TID_Simple_t4,
+				initiateEventMonitor__.TID_Simple_t4,
+				stopEventMonitor__.TID_Simple_t4,
+				exploreVOutValue__.TID_Simple_t4,
+				movePriorityParameter__.TID_Simple_t4,
+				explorePriorityParameter__.TID_Simple_t4,
+				activeSkills__.TID_Simple_t4,
+				eventReply__.TID_Simple_t4,
+				exploreMaxSpeedParameter__.TID_Simple_t4,
+				internal__.TID_Simple_t4,
+				getExploreMaxSpeedParameter__.TID_Simple_t5,
+				deactivate__.TID_Simple_t5,
+				setExplorePriorityParameter__.TID_Simple_t5,
+				activate__.TID_Simple_t5,
+				setMovePriorityParameter__.TID_Simple_t5,
+				getActiveSkills__.TID_Simple_t5,
+				setExploreMaxSpeedParameter__.TID_Simple_t5,
+				getExploreVOutValue__.TID_Simple_t5,
+				getMovePriorityParameter__.TID_Simple_t5,
+				getExplorePriorityParameter__.TID_Simple_t5,
+				initiateEventMonitor__.TID_Simple_t5,
+				stopEventMonitor__.TID_Simple_t5,
+				exploreVOutValue__.TID_Simple_t5,
+				movePriorityParameter__.TID_Simple_t5,
+				explorePriorityParameter__.TID_Simple_t5,
+				activeSkills__.TID_Simple_t5,
+				eventReply__.TID_Simple_t5,
+				exploreMaxSpeedParameter__.TID_Simple_t5,
+				internal__.TID_Simple_t5,
+				getExploreMaxSpeedParameter__.TID_Simple_t6,
+				deactivate__.TID_Simple_t6,
+				setExplorePriorityParameter__.TID_Simple_t6,
+				activate__.TID_Simple_t6,
+				setMovePriorityParameter__.TID_Simple_t6,
+				getActiveSkills__.TID_Simple_t6,
+				setExploreMaxSpeedParameter__.TID_Simple_t6,
+				getExploreVOutValue__.TID_Simple_t6,
+				getMovePriorityParameter__.TID_Simple_t6,
+				getExplorePriorityParameter__.TID_Simple_t6,
+				initiateEventMonitor__.TID_Simple_t6,
+				stopEventMonitor__.TID_Simple_t6,
+				exploreVOutValue__.TID_Simple_t6,
+				movePriorityParameter__.TID_Simple_t6,
+				explorePriorityParameter__.TID_Simple_t6,
+				activeSkills__.TID_Simple_t6,
+				eventReply__.TID_Simple_t6,
+				exploreMaxSpeedParameter__.TID_Simple_t6,
+				internal__.TID_Simple_t6,
+				getExploreMaxSpeedParameter__.TID_Simple_t7,
+				deactivate__.TID_Simple_t7,
+				setExplorePriorityParameter__.TID_Simple_t7,
+				activate__.TID_Simple_t7,
+				setMovePriorityParameter__.TID_Simple_t7,
+				getActiveSkills__.TID_Simple_t7,
+				setExploreMaxSpeedParameter__.TID_Simple_t7,
+				getExploreVOutValue__.TID_Simple_t7,
+				getMovePriorityParameter__.TID_Simple_t7,
+				getExplorePriorityParameter__.TID_Simple_t7,
+				initiateEventMonitor__.TID_Simple_t7,
+				stopEventMonitor__.TID_Simple_t7,
+				exploreVOutValue__.TID_Simple_t7,
+				movePriorityParameter__.TID_Simple_t7,
+				explorePriorityParameter__.TID_Simple_t7,
+				activeSkills__.TID_Simple_t7,
+				eventReply__.TID_Simple_t7,
+				exploreMaxSpeedParameter__.TID_Simple_t7,
+				internal__.TID_Simple_t7
+			|}
+				
+			
+			internal_events = {|enter,entered,exit,exited|}
+			shared_variable_events = {|
+			|}
+					
+			
+			-- declaring all states
+			CS_Simple_InitialiseSkills_sync = {|
+				enter.y____.x____, 
+				entered.y____.x____, 
+				exit.y____.x____, 
+				exited.y____.x____,
+				enter.x____.y____, 
+				entered.x____.y____, 
+				exit.x____.y____, 
+				exited.x____.y____ |
+				x____ <- {SID_Simple_InitialiseSkills,SID_Simple_InitialiseMonitors,SID_Simple_Exploring,SID_Simple_CheckMonitor,SID_Simple_WaitForAllSkills},
+				y____ <- {SID_Simple_InitialiseSkills}
+			|}
+			
+			
+			Simple_InitialiseSkills_triggers = {|
+				internal__.TID_Simple_t7,
+				internal__.TID_Simple_t6,
+				internal__.TID_Simple_t1,
+				activeSkills__.TID_Simple_t3,
+				internal__.TID_Simple_t2,
+				internal__.TID_Simple_t4,
+				eventReply__.TID_Simple_t5
+			|}
+			
+			State_Simple_InitialiseSkills(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = let
+				T_Simple_t6(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = internal__!TID_Simple_t6 ->  exit.SID_Simple_InitialiseSkills.SID_Simple_InitialiseSkills -> SKIP;
+									SKIP;exited.SID_Simple_InitialiseSkills.SID_Simple_InitialiseSkills -> SKIP;
+									enter!SID_Simple_InitialiseSkills!SID_Simple_WaitForAllSkills -> entered!SID_Simple_InitialiseSkills!SID_Simple_WaitForAllSkills ->
+									State_Simple_InitialiseSkills(id__,
+											    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+				State_Simple_InitialiseSkills_execute(id__,o____) = true&(setExplorePriorityParameter.out!0 -> SKIP);true&(setMovePriorityParameter.out!0 -> SKIP);true&(setExploreMaxSpeedParameter.out!2 -> SKIP);true&(activate.out!Types_Skills_EXPLORE -> SKIP);true&(activate.out!Types_Skills_MOVE -> SKIP); 
+					entered!o____!SID_Simple_InitialiseSkills ->
+					(SKIP; STOP /\ (
+						T_Simple_t6(id__,
+								    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[]
+						internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5}) -> exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] deactivate__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setExplorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] activate__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setMovePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getActiveSkills__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setExploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExploreVOutValue__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getMovePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExplorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] initiateEventMonitor__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] stopEventMonitor__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] exploreVOutValue__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] movePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] explorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] activeSkills__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] eventReply__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] exploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t6,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseSkills -> SKIP);
+								State_Simple_InitialiseSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					))
+			within
+				enter?x____:diff(SIDS,{SID_Simple_InitialiseSkills})!SID_Simple_InitialiseSkills -> (State_Simple_InitialiseSkills_execute(id__,x____))
+			
+			CS_Simple_InitialiseMonitors_sync = {|
+				enter.y____.x____, 
+				entered.y____.x____, 
+				exit.y____.x____, 
+				exited.y____.x____,
+				enter.x____.y____, 
+				entered.x____.y____, 
+				exit.x____.y____, 
+				exited.x____.y____ |
+				x____ <- {SID_Simple_InitialiseSkills,SID_Simple_InitialiseMonitors,SID_Simple_Exploring,SID_Simple_CheckMonitor,SID_Simple_WaitForAllSkills},
+				y____ <- {SID_Simple_InitialiseMonitors}
+			|}
+			
+			
+			Simple_InitialiseMonitors_triggers = {|
+				internal__.TID_Simple_t2,
+				internal__.TID_Simple_t4,
+				eventReply__.TID_Simple_t5
+			|}
+			
+			State_Simple_InitialiseMonitors(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = let
+				T_Simple_t2(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = internal__!TID_Simple_t2 ->  exit.SID_Simple_InitialiseMonitors.SID_Simple_InitialiseMonitors -> SKIP;
+									SKIP;exited.SID_Simple_InitialiseMonitors.SID_Simple_InitialiseMonitors -> SKIP;
+									enter!SID_Simple_InitialiseMonitors!SID_Simple_Exploring -> entered!SID_Simple_InitialiseMonitors!SID_Simple_Exploring ->
+									State_Simple_InitialiseMonitors(id__,
+											    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+				State_Simple_InitialiseMonitors_execute(id__,o____) = SKIP; 
+					entered!o____!SID_Simple_InitialiseMonitors ->
+					(SKIP; STOP /\ (
+						T_Simple_t2(id__,
+								    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[]
+						internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5}) -> exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] deactivate__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setExplorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] activate__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setMovePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getActiveSkills__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setExploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExploreVOutValue__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getMovePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExplorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] initiateEventMonitor__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] stopEventMonitor__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] exploreVOutValue__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] movePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] explorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] activeSkills__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] eventReply__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] exploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (
+								SKIP;
+								exited!y____!SID_Simple_InitialiseMonitors -> SKIP);
+								State_Simple_InitialiseMonitors(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					))
+			within
+				enter?x____:diff(SIDS,{SID_Simple_InitialiseMonitors})!SID_Simple_InitialiseMonitors -> (State_Simple_InitialiseMonitors_execute(id__,x____))
+			
+			CS_Simple_Exploring_sync = {|
+				enter.y____.x____, 
+				entered.y____.x____, 
+				exit.y____.x____, 
+				exited.y____.x____,
+				enter.x____.y____, 
+				entered.x____.y____, 
+				exit.x____.y____, 
+				exited.x____.y____ |
+				x____ <- {SID_Simple_InitialiseSkills,SID_Simple_InitialiseMonitors,SID_Simple_Exploring,SID_Simple_CheckMonitor,SID_Simple_WaitForAllSkills},
+				y____ <- {SID_Simple_Exploring}
+			|}
+			
+			
+			Simple_Exploring_triggers = {|
+				internal__.TID_Simple_t4,
+				eventReply__.TID_Simple_t5
+			|}
+			
+			State_Simple_Exploring(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = let
+				T_Simple_t4(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = internal__!TID_Simple_t4 ->  exit.SID_Simple_Exploring.SID_Simple_Exploring -> SKIP;
+									SKIP;exited.SID_Simple_Exploring.SID_Simple_Exploring -> SKIP;
+									enter!SID_Simple_Exploring!SID_Simple_CheckMonitor -> entered!SID_Simple_Exploring!SID_Simple_CheckMonitor ->
+									State_Simple_Exploring(id__,
+											    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+				State_Simple_Exploring_execute(id__,o____) = SKIP; 
+					entered!o____!SID_Simple_Exploring ->
+					(SKIP; STOP /\ (
+						T_Simple_t4(id__,
+								    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[]
+						internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5}) -> exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] deactivate__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setExplorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] activate__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setMovePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getActiveSkills__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setExploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExploreVOutValue__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getMovePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExplorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] initiateEventMonitor__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] stopEventMonitor__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] exploreVOutValue__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] movePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] explorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] activeSkills__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] eventReply__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] exploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (
+								SKIP;
+								exited!y____!SID_Simple_Exploring -> SKIP);
+								State_Simple_Exploring(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					))
+			within
+				enter?x____:diff(SIDS,{SID_Simple_Exploring})!SID_Simple_Exploring -> (State_Simple_Exploring_execute(id__,x____))
+			
+			CS_Simple_CheckMonitor_sync = {|
+				enter.y____.x____, 
+				entered.y____.x____, 
+				exit.y____.x____, 
+				exited.y____.x____,
+				enter.x____.y____, 
+				entered.x____.y____, 
+				exit.x____.y____, 
+				exited.x____.y____ |
+				x____ <- {SID_Simple_InitialiseSkills,SID_Simple_InitialiseMonitors,SID_Simple_Exploring,SID_Simple_CheckMonitor,SID_Simple_WaitForAllSkills},
+				y____ <- {SID_Simple_CheckMonitor}
+			|}
+			
+			
+			Simple_CheckMonitor_triggers = {|
+				internal__.TID_Simple_t4,
+				eventReply__.TID_Simple_t5
+			|}
+			
+			State_Simple_CheckMonitor(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = let
+				T_Simple_t5(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = eventReply__!TID_Simple_t5.in?monitor -> set_monitor!monitor ->  (exit.SID_Simple_CheckMonitor.SID_Simple_CheckMonitor -> SKIP;
+									SKIP;exited.SID_Simple_CheckMonitor.SID_Simple_CheckMonitor -> SKIP;
+									enter!SID_Simple_CheckMonitor!SID_Simple_Exploring -> entered!SID_Simple_CheckMonitor!SID_Simple_Exploring ->
+									State_Simple_CheckMonitor(id__,
+											    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+				)
+				State_Simple_CheckMonitor_execute(id__,o____) = SKIP; 
+					entered!o____!SID_Simple_CheckMonitor ->
+					(SKIP; STOP /\ (
+						T_Simple_t5(id__,
+								    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[]
+						internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5}) -> exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] deactivate__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setExplorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] activate__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setMovePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getActiveSkills__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setExploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExploreVOutValue__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getMovePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExplorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] initiateEventMonitor__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] stopEventMonitor__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] exploreVOutValue__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] movePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] explorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] activeSkills__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] eventReply__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] exploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (
+								SKIP;
+								exited!y____!SID_Simple_CheckMonitor -> SKIP);
+								State_Simple_CheckMonitor(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					))
+			within
+				enter?x____:diff(SIDS,{SID_Simple_CheckMonitor})!SID_Simple_CheckMonitor -> (State_Simple_CheckMonitor_execute(id__,x____))
+			
+			CS_Simple_WaitForAllSkills_sync = {|
+				enter.y____.x____, 
+				entered.y____.x____, 
+				exit.y____.x____, 
+				exited.y____.x____,
+				enter.x____.y____, 
+				entered.x____.y____, 
+				exit.x____.y____, 
+				exited.x____.y____ |
+				x____ <- {SID_Simple_InitialiseSkills,SID_Simple_InitialiseMonitors,SID_Simple_Exploring,SID_Simple_CheckMonitor,SID_Simple_WaitForAllSkills},
+				y____ <- {SID_Simple_WaitForAllSkills}
+			|}
+			
+			
+			Simple_WaitForAllSkills_triggers = {|
+				internal__.TID_Simple_t7,
+				internal__.TID_Simple_t1,
+				activeSkills__.TID_Simple_t3,
+				internal__.TID_Simple_t2,
+				internal__.TID_Simple_t4,
+				eventReply__.TID_Simple_t5
+			|}
+			
+			State_Simple_WaitForAllSkills(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = let
+				T_Simple_t1(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = internal__!TID_Simple_t1 ->  exit.SID_Simple_WaitForAllSkills.SID_Simple_WaitForAllSkills -> SKIP;
+									SKIP;exited.SID_Simple_WaitForAllSkills.SID_Simple_WaitForAllSkills -> SKIP;
+									enter!SID_Simple_WaitForAllSkills!SID_Simple_InitialiseMonitors -> entered!SID_Simple_WaitForAllSkills!SID_Simple_InitialiseMonitors ->
+									State_Simple_WaitForAllSkills(id__,
+											    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+				T_Simple_t3(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = activeSkills__!TID_Simple_t3.in?currentlyActiveSkills -> set_currentlyActiveSkills!currentlyActiveSkills ->  (exit.SID_Simple_WaitForAllSkills.SID_Simple_WaitForAllSkills -> SKIP;
+									SKIP;exited.SID_Simple_WaitForAllSkills.SID_Simple_WaitForAllSkills -> SKIP;
+									enter!SID_Simple_WaitForAllSkills!SID_Simple_WaitForAllSkills -> State_Simple_WaitForAllSkills_execute(id__,SID_Simple_WaitForAllSkills)
+				)
+				T_Simple_t7(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = internal__!TID_Simple_t7 ->  exit.SID_Simple_WaitForAllSkills.SID_Simple_WaitForAllSkills -> SKIP;
+									SKIP;exited.SID_Simple_WaitForAllSkills.SID_Simple_WaitForAllSkills -> SKIP;
+									true&(getActiveSkills.out -> SKIP);enter!SID_Simple_WaitForAllSkills!SID_Simple_WaitForAllSkills -> State_Simple_WaitForAllSkills_execute(id__,SID_Simple_WaitForAllSkills)
+				State_Simple_WaitForAllSkills_execute(id__,o____) = SKIP; 
+					entered!o____!SID_Simple_WaitForAllSkills ->
+					(SKIP; STOP /\ (
+						T_Simple_t1(id__,
+								    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)[]
+						T_Simple_t3(id__,
+								    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)[]
+						T_Simple_t7(id__,
+								    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[]
+						internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5}) -> exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] deactivate__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setExplorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] activate__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setMovePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getActiveSkills__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] setExploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExploreVOutValue__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getMovePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] getExplorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] initiateEventMonitor__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] stopEventMonitor__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] exploreVOutValue__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] movePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] explorePriorityParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] activeSkills__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] eventReply__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[] exploreMaxSpeedParameter__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Simple_t7,TID_Simple_t1,TID_Simple_t3,TID_Simple_t2,TID_Simple_t4,TID_Simple_t5})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (
+								SKIP;
+								exited!y____!SID_Simple_WaitForAllSkills -> SKIP);
+								State_Simple_WaitForAllSkills(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					))
+			within
+				enter?x____:diff(SIDS,{SID_Simple_WaitForAllSkills})!SID_Simple_WaitForAllSkills -> (State_Simple_WaitForAllSkills_execute(id__,x____))
+			
+			
+			I_Simple_i0(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = let
+				T_Simple_t0(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = internal__!TID_Simple_t0 -> enter!SID_Simple!SID_Simple_InitialiseSkills -> entered!SID_Simple!SID_Simple_InitialiseSkills ->
+				SKIP
+			within
+				T_Simple_t0(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+			
+			
+			State_Simple_InitialiseSkills_R(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = 
+				State_Simple_InitialiseSkills(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					[|diff(int_int,Simple_InitialiseSkills_triggers)|]
+				SKIP
+					 		
+			State_Simple_InitialiseMonitors_R(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = 
+				State_Simple_InitialiseMonitors(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					[|diff(int_int,Simple_InitialiseMonitors_triggers)|]
+				SKIP
+					 		
+			State_Simple_Exploring_R(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = 
+				State_Simple_Exploring(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					[|diff(int_int,Simple_Exploring_triggers)|]
+				SKIP
+					 		
+			State_Simple_CheckMonitor_R(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = 
+				State_Simple_CheckMonitor(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					[|diff(int_int,Simple_CheckMonitor_triggers)|]
+				SKIP
+					 		
+			State_Simple_WaitForAllSkills_R(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = 
+				State_Simple_WaitForAllSkills(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					[|diff(int_int,Simple_WaitForAllSkills_triggers)|]
+				SKIP
+					 		
+				
+			STM(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = (
+				I_Simple_i0(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+					[|
+						{|enter.x____.y____, entered.x____.y____, exit.x____.y____, exited.x____.y____ |
+							x____ <- diff(SIDS,{SID_Simple_InitialiseSkills,SID_Simple_InitialiseMonitors,SID_Simple_Exploring,SID_Simple_CheckMonitor,SID_Simple_WaitForAllSkills}),
+							y____ <- {SID_Simple_InitialiseSkills,SID_Simple_InitialiseMonitors,SID_Simple_Exploring,SID_Simple_CheckMonitor,SID_Simple_WaitForAllSkills}
+					|}|]
+				(
+					State_Simple_InitialiseSkills_R(id__,
+							    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[|inter(CS_Simple_InitialiseSkills_sync,union(union(union(CS_Simple_InitialiseMonitors_sync,CS_Simple_Exploring_sync),CS_Simple_CheckMonitor_sync),CS_Simple_WaitForAllSkills_sync))|]
+					(
+						State_Simple_InitialiseMonitors_R(id__,
+								    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+							[|inter(CS_Simple_InitialiseMonitors_sync,union(union(CS_Simple_Exploring_sync,CS_Simple_CheckMonitor_sync),CS_Simple_WaitForAllSkills_sync))|]
+						(
+							State_Simple_Exploring_R(id__,
+									    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+								[|inter(CS_Simple_Exploring_sync,union(CS_Simple_CheckMonitor_sync,CS_Simple_WaitForAllSkills_sync))|]
+							(
+								State_Simple_CheckMonitor_R(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+									[|inter(CS_Simple_CheckMonitor_sync,CS_Simple_WaitForAllSkills_sync)|]
+								State_Simple_WaitForAllSkills_R(id__,
+										    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+							)
+						)
+					)
+				)
+			)
+			
+			-- optimized memory process
+			channel getV_currentlyActiveSkills: Set(Types_Skills)
+			channel getV_monitor: Types_Events
+			
+			-- individual memory processes
+			Memory_currentlyActiveSkills(currentlyActiveSkills) = (
+				get_currentlyActiveSkills!currentlyActiveSkills -> Memory_currentlyActiveSkills(currentlyActiveSkills)
+				[]
+				getV_currentlyActiveSkills!currentlyActiveSkills -> Memory_currentlyActiveSkills(currentlyActiveSkills)
+				[]
+				set_currentlyActiveSkills?x__ -> Memory_currentlyActiveSkills(x__)
+				[]
+				activeSkills__!TID_Simple_t3.in?currentlyActiveSkills -> Memory_currentlyActiveSkills(currentlyActiveSkills)
+			)
+			Memory_monitor(monitor) = (
+				get_monitor!monitor -> Memory_monitor(monitor)
+				[]
+				getV_monitor!monitor -> Memory_monitor(monitor)
+				[]
+				set_monitor?x__ -> Memory_monitor(x__)
+				[]
+				eventReply__!TID_Simple_t5.in?monitor -> Memory_monitor(monitor)
+			)
+			
+			-- processes that read variables and offer transitions
+			MemoryTransitions(id__, currentlyActiveSkills
+						, monitor
+						,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = 		
+			(internal__!TID_Simple_t0 -> SKIP
+			[]
+			((currentlyActiveSkills=={Types_Skills_EXPLORE,Types_Skills_MOVE}))&(internal__!TID_Simple_t1 -> SKIP)
+			[]
+			internal__!TID_Simple_t2 -> SKIP
+			[]
+			activeSkills__!TID_Simple_t3.in?currentlyActiveSkills -> SKIP
+			[]
+			(true)&(internal__!TID_Simple_t4 -> SKIP)
+			[]
+			eventReply__!TID_Simple_t5.in?monitor -> SKIP
+			[]
+			internal__!TID_Simple_t6 -> SKIP
+			[]
+			(true)&(internal__!TID_Simple_t7 -> SKIP)[]
+			set_currentlyActiveSkills?x__ -> SKIP[]
+			set_monitor?x__ -> SKIP)
+			
+			MemoryTransitions_Simple(id__, const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = (getV_currentlyActiveSkills?currentlyActiveSkills ->
+			getV_monitor?monitor ->
+			MemoryTransitions(id__, currentlyActiveSkills
+						, monitor
+						,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME); MemoryTransitions_Simple(id__, const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME))			
+			
+			-- synchronisation, hiding and process sets 
+			MemoryVariablesProcesses_Simple = Union(
+				{
+					{
+						(Memory_currentlyActiveSkills({}),{|activeSkills__.TID_Simple_t3,getV_currentlyActiveSkills,get_currentlyActiveSkills,set_currentlyActiveSkills|}),
+						(Memory_monitor(Types_Events_EMPTY),{|eventReply__.TID_Simple_t5,get_monitor,getV_monitor,set_monitor|})
+					}
+				}
+			)
+			
+			MemoryVariablesSyncSet = Union({
+				{|
+					eventReply__.TID_Simple_t5,
+					activeSkills__.TID_Simple_t3,
+					getV_monitor,
+					getV_currentlyActiveSkills,
+					set_monitor,
+					set_currentlyActiveSkills
+				|}	
+			})
+			
+			MemoryVariablesHideSet = Union({
+				{|
+					getV_monitor,
+					getV_currentlyActiveSkills
+				|}
+			})
+			
+			-- combined individual memory processes
+			MemoryVariables = ||| (P, alpha) : MemoryVariablesProcesses_Simple @ P
+			
+			-- complete memory process	
+			MemoryN(id__, const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = sbisim(diamond((sbisim(diamond(MemoryVariables)) [| MemoryVariablesSyncSet |] sbisim(diamond(MemoryTransitions_Simple(id__, const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)))) \ MemoryVariablesHideSet))
+			
+			-- optimised memory
+			-- Sets of named elements identified according to transition conditions:
+			-- {}
+			-- {EXECUTIVE_CYCLE_TIME}
+			-- {currentlyActiveSkills}
+			-- Summary of all identified named elements:
+			-- {
+			-- monitor
+			-- EXECUTIVE_CYCLE_TIME
+			-- currentlyActiveSkills
+			-- }
+			
+			-- Allocation plan:
+			-- 0:{}
+			--	=> {
+			--		TID_Simple_t3,
+			--		TID_Simple_t6,
+			--		TID_Simple_t0,
+			--		TID_Simple_t2,
+			--		TID_Simple_t5}
+			-- 1:{EXECUTIVE_CYCLE_TIME}
+			--	=> {
+			--		TID_Simple_t7,
+			--		TID_Simple_t4}
+			-- 2:{currentlyActiveSkills}
+			--	=> {
+			--		TID_Simple_t1}
+			
+			-- Memory transition processes
+			MemoryTransitions_opt_0(id__) =
+			(
+				let
+					Update = Current(id__)
+					Current(id__)
+					 	   = 
+					 	   activeSkills__!TID_Simple_t3.in?currentlyActiveSkills -> Update
+					 	   []
+					 	   internal__!TID_Simple_t6 -> Update
+					 	   []
+					 	   internal__!TID_Simple_t0 -> Update
+					 	   []
+					 	   internal__!TID_Simple_t2 -> Update
+					 	   []
+					 	   eventReply__!TID_Simple_t5.in?monitor -> Update
+				within
+					Update
+			)
+			MemoryTransitions_opt_1(id__,
+				 const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) =
+			(
+				let
+					Update = Current(id__)
+					Current(id__)
+					 	   = 
+					 	   (true)&(internal__!TID_Simple_t7 -> Update)
+					 	   []
+					 	   (true)&(internal__!TID_Simple_t4 -> Update)
+				within
+					Update
+			)
+			MemoryTransitions_opt_2(id__) =
+			(
+				let
+					Update = 
+					get_currentlyActiveSkills?currentlyActiveSkills ->
+					Current(id__,
+						 currentlyActiveSkills)
+					Current(id__,
+						 currentlyActiveSkills)
+					 	   = 
+					 	   ((currentlyActiveSkills=={Types_Skills_EXPLORE,Types_Skills_MOVE}))&(internal__!TID_Simple_t1 -> Update)
+					 	   	 
+					 	   	 []
+					 	   	 set_currentlyActiveSkills?x__ -> Update
+				within
+					Update
+			)
+			
+			-- Memory cell processes
+			Memory_opt_monitor(x__) = ( 
+				get_monitor!x__ -> Memory_opt_monitor(x__)
+				[]
+				set_monitor?x__ -> Memory_opt_monitor(x__)
+			)
+			Memory_opt_currentlyActiveSkills(x__) = ( 
+				get_currentlyActiveSkills!x__ -> Memory_opt_currentlyActiveSkills(x__)
+				[]
+				set_currentlyActiveSkills?x__ -> Memory_opt_currentlyActiveSkills(x__)
+			)
+			
+			-- Composition of memory, StateMachine and Memory transition processes
+			
+			MemorySTM_opt(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) =
+				sbisim(	
+				  dbisim(
+				    sbisim(dbisim(
+				      sbisim(Memory_opt_currentlyActiveSkills({})
+				          	[| {|set_currentlyActiveSkills,get_currentlyActiveSkills|} |] 
+				          	sbisim(	
+				          	  dbisim(
+				          	    sbisim(sbisim(	
+				          	      dbisim(
+				          	        sbisim(dbisim(sbisim(Memory_opt_monitor(Types_Events_EMPTY)
+				          	              	[| {|get_monitor,set_monitor|} |] 
+				          	              	STM_core(id__,
+				          	              			    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+				          	              	)\ {|get_monitor,set_monitor|}
+				          	              )
+				          	          	  [| {|internal__.TID_Simple_t6,eventReply__.TID_Simple_t5,activeSkills__.TID_Simple_t3,internal__.TID_Simple_t2,internal__.TID_Simple_t0|} |]
+				          	          	  MemoryTransitions_opt_0(id__)
+				          	          	  )\{|internal__.TID_Simple_t6,internal__.TID_Simple_t2,internal__.TID_Simple_t0|})
+				          	          )
+				          	      	  [| {|set_currentlyActiveSkills,internal__.TID_Simple_t1|} |]
+				          	      	  MemoryTransitions_opt_2(id__)
+				          	      	  )\{|internal__.TID_Simple_t1|})
+				          	      )
+				          	) \ {|set_currentlyActiveSkills,get_currentlyActiveSkills|}
+				          )
+				      	  [| {|internal__.TID_Simple_t7,internal__.TID_Simple_t4|} |]
+				      	  MemoryTransitions_opt_1(id__,
+				      	  	 const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+				      	  )\{|internal__.TID_Simple_t7,internal__.TID_Simple_t4|})
+				      )
+			
+			-- main process
+			
+			MachineMemorySyncSet = Union({
+				union(
+					union(
+						{|get_currentlyActiveSkills,set_currentlyActiveSkills,
+						get_monitor,set_monitor|},
+						{||}
+					)
+						
+					,
+					{|internal__.TID_Simple_t0,
+					internal__.TID_Simple_t1,
+					internal__.TID_Simple_t2,
+					activeSkills__.TID_Simple_t3,
+					internal__.TID_Simple_t4,
+					eventReply__.TID_Simple_t5,
+					internal__.TID_Simple_t6,
+					internal__.TID_Simple_t7|}
+				)
+			})
+			
+			MachineMemoryHidingSet = Union({
+				union(
+					{|get_currentlyActiveSkills,set_currentlyActiveSkills,
+					get_monitor,set_monitor|},
+					{||}
+				)
+			})
+			
+			MachineInternalEvents = {|
+				internal__
+			|}
+			
+			AUX(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = (
+				(
+					STM(id__,
+							    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+						[|MachineMemorySyncSet|]
+					sbisim(diamond(MemoryN(id__, const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)))
+				)[[
+					getExploreMaxSpeedParameter__.x____ <- getExploreMaxSpeedParameter,
+					deactivate__.x____ <- deactivate,
+					setExplorePriorityParameter__.x____ <- setExplorePriorityParameter,
+					activate__.x____ <- activate,
+					setMovePriorityParameter__.x____ <- setMovePriorityParameter,
+					getActiveSkills__.x____ <- getActiveSkills,
+					setExploreMaxSpeedParameter__.x____ <- setExploreMaxSpeedParameter,
+					getExploreVOutValue__.x____ <- getExploreVOutValue,
+					getMovePriorityParameter__.x____ <- getMovePriorityParameter,
+					getExplorePriorityParameter__.x____ <- getExplorePriorityParameter,
+					initiateEventMonitor__.x____ <- initiateEventMonitor,
+					stopEventMonitor__.x____ <- stopEventMonitor,
+					exploreVOutValue__.x____ <- exploreVOutValue,
+					movePriorityParameter__.x____ <- movePriorityParameter,
+					explorePriorityParameter__.x____ <- explorePriorityParameter,
+					activeSkills__.x____ <- activeSkills,
+					eventReply__.x____ <- eventReply,
+					exploreMaxSpeedParameter__.x____ <- exploreMaxSpeedParameter
+					| x____ <- TIDS
+				]]
+				\MachineMemoryHidingSet
+			)
+			[|{|terminate|}|>SKIP\MachineInternalEvents
+			
+			
+			STM_core(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = 
+				sbisim(diamond(STM(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)))
+				
+			AUX_opt(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = 
+				(MemorySTM_opt(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+				)[[
+					getExploreMaxSpeedParameter__.x____ <- getExploreMaxSpeedParameter,
+					deactivate__.x____ <- deactivate,
+					setExplorePriorityParameter__.x____ <- setExplorePriorityParameter,
+					activate__.x____ <- activate,
+					setMovePriorityParameter__.x____ <- setMovePriorityParameter,
+					getActiveSkills__.x____ <- getActiveSkills,
+					setExploreMaxSpeedParameter__.x____ <- setExploreMaxSpeedParameter,
+					getExploreVOutValue__.x____ <- getExploreVOutValue,
+					getMovePriorityParameter__.x____ <- getMovePriorityParameter,
+					getExplorePriorityParameter__.x____ <- getExplorePriorityParameter,
+					initiateEventMonitor__.x____ <- initiateEventMonitor,
+					stopEventMonitor__.x____ <- stopEventMonitor,
+					exploreVOutValue__.x____ <- exploreVOutValue,
+					movePriorityParameter__.x____ <- movePriorityParameter,
+					explorePriorityParameter__.x____ <- explorePriorityParameter,
+					activeSkills__.x____ <- activeSkills,
+					eventReply__.x____ <- eventReply,
+					exploreMaxSpeedParameter__.x____ <- exploreMaxSpeedParameter
+					| x____ <- TIDS
+				]]
+				[|{|terminate|}|>SKIP\MachineInternalEvents
+		
+			-- definition of the behaviour of state machines (default, optimised, visible, visible and optimised)
+			transparent diamond
+			transparent sbisim
+			transparent dbisim
+			transparent chase
+					
+			FVS__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = AUX_opt(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+			Dunopt__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = AUX(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) \ internal_events
+			D__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = AUX_opt(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) \ internal_events
+			O__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = sbisim(diamond(D__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)))
+			VS__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = ShowV(FVS__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME))
+			VS_O__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = sbisim(diamond(VS__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)))
+			HEXT__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = O__(id__,
+					    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) [|shared_variable_events|] SKIP	
+		endmodule
+					
+		-- declaring controller events
+		channel getExploreMaxSpeedParameter: InOut
+		channel deactivate: InOut.Types_Skills
+		channel setExplorePriorityParameter: InOut.core_nat
+		channel activate: InOut.Types_Skills
+		channel setMovePriorityParameter: InOut.core_nat
+		channel getActiveSkills: InOut
+		channel setExploreMaxSpeedParameter: InOut.core_real
+		channel getExploreVOutValue: InOut
+		channel getMovePriorityParameter: InOut
+		channel getExplorePriorityParameter: InOut
+		channel initiateEventMonitor: InOut.Types_Events
+		channel stopEventMonitor: InOut.Types_Events
+		channel exploreVOutValue: InOut.Types_Velocities
+		channel movePriorityParameter: InOut.core_nat
+		channel explorePriorityParameter: InOut.core_nat
+		channel activeSkills: InOut.Set(Types_Skills)
+		channel eventReply: InOut.Types_Events
+		channel exploreMaxSpeedParameter: InOut.core_real
+						
+
+	
+		channel terminate
+	
+		-- declaring controller memory
+		Memory(id__) = SKIP
+		-- declaring controller termination channel
+
+	
+		D__(id__,
+				    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = (
+			(
+				let
+					const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME = 2
+				within 
+				Simple::D__(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)[[
+					Simple::terminate <- terminate,
+					Simple::getActiveSkills <- getActiveSkills,
+					Simple::activeSkills <- activeSkills,
+					Simple::eventReply <- eventReply,
+					Simple::deactivate <- deactivate,
+					Simple::activate <- activate,
+					Simple::stopEventMonitor <- stopEventMonitor,
+					Simple::initiateEventMonitor <- initiateEventMonitor,
+					Simple::movePriorityParameter <- movePriorityParameter,
+					Simple::getExplorePriorityParameter <- getExplorePriorityParameter,
+					Simple::exploreVOutValue <- exploreVOutValue,
+					Simple::exploreMaxSpeedParameter <- exploreMaxSpeedParameter,
+					Simple::explorePriorityParameter <- explorePriorityParameter,
+					Simple::setMovePriorityParameter <- setMovePriorityParameter,
+					Simple::getExploreVOutValue <- getExploreVOutValue,
+					Simple::setExploreMaxSpeedParameter <- setExploreMaxSpeedParameter,
+					Simple::getMovePriorityParameter <- getMovePriorityParameter,
+					Simple::setExplorePriorityParameter <- setExplorePriorityParameter,
+					Simple::getExploreMaxSpeedParameter <- getExploreMaxSpeedParameter
+				]]
+			)
+				[|
+					union(
+						{|
+						|},
+						{|
+						|}
+					)
+				|]
+			Memory(id__)
+		)
+		\ union(
+			{|
+			|},
+			{|
+			|}
+		)
+		[|{|terminate|}|>SKIP
+					
+		-- VS version
+		VS__(id__,
+				    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = (
+			(
+				let
+					const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME = 2
+				within 
+				Simple::VS__(id__,
+						    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)[[
+					Simple::terminate <- terminate,
+					Simple::getActiveSkills <- getActiveSkills,
+					Simple::activeSkills <- activeSkills,
+					Simple::eventReply <- eventReply,
+					Simple::deactivate <- deactivate,
+					Simple::activate <- activate,
+					Simple::stopEventMonitor <- stopEventMonitor,
+					Simple::initiateEventMonitor <- initiateEventMonitor,
+					Simple::movePriorityParameter <- movePriorityParameter,
+					Simple::getExplorePriorityParameter <- getExplorePriorityParameter,
+					Simple::exploreVOutValue <- exploreVOutValue,
+					Simple::exploreMaxSpeedParameter <- exploreMaxSpeedParameter,
+					Simple::explorePriorityParameter <- explorePriorityParameter,
+					Simple::setMovePriorityParameter <- setMovePriorityParameter,
+					Simple::getExploreVOutValue <- getExploreVOutValue,
+					Simple::setExploreMaxSpeedParameter <- setExploreMaxSpeedParameter,
+					Simple::getMovePriorityParameter <- getMovePriorityParameter,
+					Simple::setExplorePriorityParameter <- setExplorePriorityParameter,
+					Simple::getExploreMaxSpeedParameter <- getExploreMaxSpeedParameter
+				]]
+			)
+				[|
+					union(
+						{|
+						|},
+						{|
+						|}
+					)
+				|]
+			Memory(id__)
+		)
+		\ union(
+			{|
+			|},
+			{|
+			|}
+		)
+		[|{|terminate|}|>SKIP			
+
+					
+		-- O version (optimised) THESE TWO PROCESSES SHOULD BE KEPT IN SYNC WITH THE ABOVE TWO
+		O__(id__,
+				    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = sbisim(
+			diamond(
+				(
+					(
+						let
+							const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME = 2
+						within 
+						Simple::O__(id__,
+								    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)[[
+							Simple::terminate <- terminate,
+							Simple::getActiveSkills <- getActiveSkills,
+							Simple::activeSkills <- activeSkills,
+							Simple::eventReply <- eventReply,
+							Simple::deactivate <- deactivate,
+							Simple::activate <- activate,
+							Simple::stopEventMonitor <- stopEventMonitor,
+							Simple::initiateEventMonitor <- initiateEventMonitor,
+							Simple::movePriorityParameter <- movePriorityParameter,
+							Simple::getExplorePriorityParameter <- getExplorePriorityParameter,
+							Simple::exploreVOutValue <- exploreVOutValue,
+							Simple::exploreMaxSpeedParameter <- exploreMaxSpeedParameter,
+							Simple::explorePriorityParameter <- explorePriorityParameter,
+							Simple::setMovePriorityParameter <- setMovePriorityParameter,
+							Simple::getExploreVOutValue <- getExploreVOutValue,
+							Simple::setExploreMaxSpeedParameter <- setExploreMaxSpeedParameter,
+							Simple::getMovePriorityParameter <- getMovePriorityParameter,
+							Simple::setExplorePriorityParameter <- setExplorePriorityParameter,
+							Simple::getExploreMaxSpeedParameter <- getExploreMaxSpeedParameter
+						]]
+					)
+						[|
+							union(
+								{|
+								|},
+								{|
+								|}
+							)
+						|]
+					Memory(id__)
+				)
+				\ union(
+					{|
+					|},
+					{|
+					|}
+				)
+				[|{|terminate|}|>SKIP
+			)
+		)
+					
+		-- VS_O version
+		VS_O__(id__,
+				    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = sbisim(
+			diamond(
+				(
+					(
+						let
+							const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME = 2
+						within 
+						Simple::VS_O__(id__,
+								    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)[[
+							Simple::terminate <- terminate,
+							Simple::getActiveSkills <- getActiveSkills,
+							Simple::activeSkills <- activeSkills,
+							Simple::eventReply <- eventReply,
+							Simple::deactivate <- deactivate,
+							Simple::activate <- activate,
+							Simple::stopEventMonitor <- stopEventMonitor,
+							Simple::initiateEventMonitor <- initiateEventMonitor,
+							Simple::movePriorityParameter <- movePriorityParameter,
+							Simple::getExplorePriorityParameter <- getExplorePriorityParameter,
+							Simple::exploreVOutValue <- exploreVOutValue,
+							Simple::exploreMaxSpeedParameter <- exploreMaxSpeedParameter,
+							Simple::explorePriorityParameter <- explorePriorityParameter,
+							Simple::setMovePriorityParameter <- setMovePriorityParameter,
+							Simple::getExploreVOutValue <- getExploreVOutValue,
+							Simple::setExploreMaxSpeedParameter <- setExploreMaxSpeedParameter,
+							Simple::getMovePriorityParameter <- getMovePriorityParameter,
+							Simple::setExplorePriorityParameter <- setExplorePriorityParameter,
+							Simple::getExploreMaxSpeedParameter <- getExploreMaxSpeedParameter
+						]]
+					)
+						[|
+							union(
+								{|
+								|},
+								{|
+								|}
+							)
+						|]
+					Memory(id__)
+				)
+				\ union(
+					{|
+					|},
+					{|
+					|}
+				)
+				[|{|terminate|}|>SKIP
+			)
+		)
+		
+		HEXT(id__,
+				    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) = O__(id__,
+				    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME) [|shared_variable_events|] SKIP	
+	endmodule

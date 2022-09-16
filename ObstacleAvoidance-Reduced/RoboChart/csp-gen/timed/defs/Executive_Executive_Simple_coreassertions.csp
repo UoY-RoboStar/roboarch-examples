@@ -1,0 +1,24 @@
+include "Executive_defs.csp"
+include "core_defs.csp"
+include "timed_definitions.csp"
+include "Executive_Executive_Simple.csp"
+include "Types_defs.csp"
+include "robochart_defs.csp"
+include "../instantiations.csp"
+channel r__
+-- generate Executive_Executive_Simple
+P_Executive_Executive_Simple = let
+	id__ = 0
+	
+	
+	const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME = 2
+	
+within
+	Executive_Executive_Simple::O__(
+		id__,
+		const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME
+	)
+assert P_Executive_Executive_Simple :[deadlock-free]	
+assert P_Executive_Executive_Simple;RUN({r__}) :[deadlock-free]
+assert P_Executive_Executive_Simple :[deterministic]
+assert P_Executive_Executive_Simple :[divergence-free]

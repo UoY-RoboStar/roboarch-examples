@@ -1,0 +1,21 @@
+include "Control_DSkill_Move_Move.csp"
+include "core_defs.csp"
+include "Control_DSkill_Move_defs.csp"
+include "Types_defs.csp"
+include "robochart_defs.csp"
+include "../instantiations.csp"
+channel r__
+-- generate Control_DSkill_Move_Move
+P_Control_DSkill_Move_Move = let
+	id__ = 0
+	
+	
+	
+within
+	Control_DSkill_Move_Move::O__(
+		id__
+	)
+assert P_Control_DSkill_Move_Move :[deadlock-free]	
+assert P_Control_DSkill_Move_Move;RUN({r__}) :[deadlock-free]
+assert P_Control_DSkill_Move_Move :[deterministic]
+assert P_Control_DSkill_Move_Move :[divergence-free]

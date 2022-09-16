@@ -1,0 +1,7 @@
+include "defs/robochart_defs.csp"
+include "defs/core_defs.csp"
+include "defs/Executive_defs.csp"
+include "defs/Executive.csp"
+include "instantiations.csp"
+include "defs/Types_defs.csp"
+channel r__

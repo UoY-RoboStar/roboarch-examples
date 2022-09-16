@@ -1,0 +1,101 @@
+-- EBDS1 - refinement
+assert EBDS1 ||| RUN({tock})  [F= let 
+	id__ = 0
+	
+	
+	
+within
+	Control_DSkill_Proximity::Proximity::D__(id__)
+
+-- EBDS3 - refinement
+assert EBDS3 ||| RUN({tock})  [F= let 
+	id__ = 0
+	
+	
+	
+within
+	Control_DSkill_Proximity::Proximity::D__(id__)
+
+include "defs/timed_definitions.csp"
+include "defs/Control_DSkill_Proximity.csp"
+include "defs/core_defs.csp"
+include "defs/Control_DSkill_Move_defs.csp"
+include "defs/Platform_defs.csp"
+include "defs/Executive_defs.csp"
+include "defs/sequence_toolkit_defs.csp"
+include "defs/ObstacleAvoidance_defs.csp"
+include "defs/Types_defs.csp"
+include "defs/Control_defs.csp"
+include "defs/Control_CSkill_Explore_defs.csp"
+include "defs/Control_DSkill_Proximity_defs.csp"
+include "defs/function_toolkit_defs.csp"
+include "defs/robochart_defs.csp"
+include "defs/set_toolkit_defs.csp"
+include "instantiations.csp"
+include "defs/Control_SkillsManager_defs.csp"
+include "defs/relation_toolkit_defs.csp"
+
+channel r__
+
+skillControlEvents = { 
+		Control_DSkill_Proximity::Proximity::activateProximity.in, Control_DSkill_Proximity::Proximity::deactivateProximity.in, 
+		Control_DSkill_Proximity::Proximity::executeProximity.in, Control_DSkill_Proximity::Proximity::completeProximity.out
+	}
+	
+	skillParameterEvents = Union( { {|Control_DSkill_Proximity::Proximity::proximityPriorityParam.in|} 
+		                          }
+	)
+	
+	skillActuationCommandEvents = {}
+		
+	skillSensorDataEvents = {|Control_DSkill_Proximity::Proximity::proximityGap.out|}
+	
+	
+	skillPlatformSensingEvents = {|Control_DSkill_Proximity::Proximity::platformProximity.in|}
+		
+	skillPlatformActuationEvents = {}
+	
+	
+	allSkillEvents = Union({ skillControlEvents, skillParameterEvents, skillActuationCommandEvents, skillSensorDataEvents, skillPlatformActuationEvents, skillPlatformSensingEvents })
+
+EBDS1 = let	
+		PRE = |~| ev: diff( allSkillEvents, { Control_DSkill_Proximity::Proximity::executeProximity.in }) @ ev -> PRE
+			  |~| Control_DSkill_Proximity::Proximity::executeProximity.in -> CON
+			  
+	    CON = |~| ev: union(skillPlatformActuationEvents, skillSensorDataEvents) @ ev -> CON
+		      |~|
+		      Control_DSkill_Proximity::Proximity::completeProximity.out -> POS
+		    
+		POS = CHAOS( allSkillEvents )
+		     
+	within PRE
+
+EBDS3 = let
+		PRE = |~| ev: diff(allSkillEvents, { Control_DSkill_Proximity::Proximity::activateProximity.in, Control_DSkill_Proximity::Proximity::completeProximity.out }  ) @
+					ev -> PRE
+		      |~| 
+		      Control_DSkill_Proximity::Proximity::activateProximity.in -> PRE'(<>)
+		      |~|
+		      Control_DSkill_Proximity::Proximity::completeProximity.out -> PRE'(<>) 
+		
+		PRE'(sd1) = |~| ev: union(skillParameterEvents , skillActuationCommandEvents) @
+		                              ev -> PRE'(sd1)
+		            |~| 
+		            Control_DSkill_Proximity::Proximity::platformProximity.in? sd -> PRE'(<sd>)
+					|~| 
+					Control_DSkill_Proximity::Proximity::executeProximity.in -> CON(sd1)
+					|~|
+					Control_DSkill_Proximity::Proximity::deactivateProximity.in -> POS
+		
+		CON(sd1) = OUT1(sd1); POS
+		
+		OUT1(sd1) = if (sd1 != <>) then 
+					  |~| ev:  { Control_DSkill_Proximity::Proximity::proximityGap.out.(head(sd1), p) | p <- core_nat } @
+					  	ev-> SKIP
+					else
+					   SKIP
+		
+		POS = CHAOS( allSkillEvents )
+		
+	
+	within PRE

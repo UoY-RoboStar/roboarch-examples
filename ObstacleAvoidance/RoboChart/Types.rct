@@ -1,0 +1,120 @@
+package Types
+
+
+
+
+
+
+record Velocities {
+	linear : real
+	angular : real
+}
+
+
+
+
+
+
+
+enumeration Events {
+	SAFETYDISTANCEREACHED
+ }
+
+
+
+
+
+
+enumeration Skills {
+	MOVE
+	PROXIMITY
+	EXPLORE
+ }
+
+
+
+
+interface Motors {
+
+	 event move : Velocities
+
+
+}
+
+interface IMove {
+
+	 event activateMove
+	 event deactivateMove
+	 event executeMove
+	 event movePriorityParam : nat
+	 event moveVIn : Velocities
+	 event completeMove
+
+}
+
+interface Sense {
+
+	 event proximity : int
+
+
+}
+
+interface IExplore {
+
+	 event activateExplore
+	 event deactivateExplore
+	 event executeExplore
+	 event exploreMaxSpeedParam : real
+	 event exploreSafetyDistanceParam : int
+	 event explorePriorityParam : nat
+	 event exploreObstacleDistance : int
+	 event exploreVOut : Velocities * nat
+	 event completeExplore
+
+
+}
+
+interface IControl {
+
+	 event getExploreMaxSpeedParameter
+	 event setExploreSafetyDistanceParameter : int
+	 event deactivate : Skills
+	 event setExplorePriorityParameter : nat
+	 event activate : Skills
+	 event getProximityPriorityParameter
+	 event getProximityGapValue
+	 event setMovePriorityParameter : nat
+	 event getActiveSkills
+	 event getExploreSafetyDistanceParameter
+	 event setExploreMaxSpeedParameter : real
+	 event getExploreVOutValue
+	 event getMovePriorityParameter
+	 event setProximityPriorityParameter : nat
+	 event getExplorePriorityParameter
+	 event initiateEventMonitor : Events
+	 event stopEventMonitor : Events
+	 event exploreVOutValue : Velocities
+	 event movePriorityParameter : nat
+	 event explorePriorityParameter : nat
+	 event exploreSafetyDistanceParameter : int
+	 event proximityPriorityParameter : nat
+	 event proximityGapValue : int
+	 event activeSkills : Set( Skills )
+	 event eventReply : Events
+	 event exploreMaxSpeedParameter : real
+
+
+}
+
+interface IProximity {
+
+	 event activateProximity
+	 event deactivateProximity
+	 event executeProximity
+	 event proximityPriorityParam : nat
+	 event proximityGap : int * nat
+	 event completeProximity
+
+}
+
+function UpdateValue ( value : ?X * nat , newValue : ?X * nat  ) : boolean { }

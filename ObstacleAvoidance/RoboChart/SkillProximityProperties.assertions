@@ -1,0 +1,84 @@
+csp ProximitySkillEvents csp-begin
+	
+	skillControlEvents = { 
+		Control_DSkill_Proximity::Proximity::activateProximity.in, Control_DSkill_Proximity::Proximity::deactivateProximity.in, 
+		Control_DSkill_Proximity::Proximity::executeProximity.in, Control_DSkill_Proximity::Proximity::completeProximity.out
+	}
+	
+	skillParameterEvents = Union( { {|Control_DSkill_Proximity::Proximity::proximityPriorityParam.in|} 
+		                          }
+	)
+	
+	skillActuationCommandEvents = {}
+		
+	skillSensorDataEvents = {|Control_DSkill_Proximity::Proximity::proximityGap.out|}
+	
+	
+	skillPlatformSensingEvents = {|Control_DSkill_Proximity::Proximity::platformProximity.in|}
+		
+	skillPlatformActuationEvents = {}
+	
+	
+	allSkillEvents = Union({ skillControlEvents, skillParameterEvents, skillActuationCommandEvents, skillSensorDataEvents, skillPlatformActuationEvents, skillPlatformSensingEvents })
+	
+csp-end
+
+
+csp EBDS1 csp-begin
+
+	EBDS1 = let	
+		PRE = |~| ev: diff( allSkillEvents, { Control_DSkill_Proximity::Proximity::executeProximity.in }) @ ev -> PRE
+			  |~| Control_DSkill_Proximity::Proximity::executeProximity.in -> CON
+			  
+	    CON = |~| ev: union(skillPlatformActuationEvents, skillSensorDataEvents) @ ev -> CON
+		      |~|
+		      Control_DSkill_Proximity::Proximity::completeProximity.out -> POS
+		    
+		POS = CHAOS( allSkillEvents )
+		     
+	within PRE
+csp-end
+
+csp EBDS3 csp-begin 
+	EBDS3 = let
+		PRE = |~| ev: diff(allSkillEvents, { Control_DSkill_Proximity::Proximity::activateProximity.in, Control_DSkill_Proximity::Proximity::completeProximity.out }  ) @
+					ev -> PRE
+		      |~| 
+		      Control_DSkill_Proximity::Proximity::activateProximity.in -> PRE'(<>)
+		      |~|
+		      Control_DSkill_Proximity::Proximity::completeProximity.out -> PRE'(<>) 
+		
+		PRE'(sd1) = |~| ev: union(skillParameterEvents , skillActuationCommandEvents) @
+		                              ev -> PRE'(sd1)
+		            |~| 
+		            Control_DSkill_Proximity::Proximity::platformProximity.in? sd -> PRE'(<sd>)
+					|~| 
+					Control_DSkill_Proximity::Proximity::executeProximity.in -> CON(sd1)
+					|~|
+					Control_DSkill_Proximity::Proximity::deactivateProximity.in -> POS
+		
+		CON(sd1) = OUT1(sd1); POS
+		
+		OUT1(sd1) = if (sd1 != <>) then 
+					  |~| ev:  { Control_DSkill_Proximity::Proximity::proximityGap.out.(head(sd1), p) | p <- core_nat } @
+					  	ev-> SKIP
+					else
+					   SKIP
+		
+		POS = CHAOS( allSkillEvents )
+		
+	
+	within PRE
+
+csp-end
+
+assertion EBDS1: Control::DSkill::Proximity::Proximity refines EBDS1 in the failures model
+
+// EBDS2 - not applicable to Proximity as it receives no actuation command values from the skills manager.
+
+assertion EBDS3: Control::DSkill::Proximity::Proximity refines EBDS3 in the failures model
+
+// EBDS4 - not applicable to Proximity as it receives no actuation command values from the skills manager.
+
+//assertion EBDS5: Control::DSkill::Proximity::Proximity refines EBDS5 in the failures model -- Property of the skills manager
+

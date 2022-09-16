@@ -1,0 +1,96 @@
+system ObstacleAvoidance
+
+datatype Velocities {
+    linear:real
+    angular:real
+}
+
+interface Motors {
+     event move: Velocities
+}
+
+robotic platform PuckRobot {
+    uses Motors
+}
+
+
+layer Executive {
+
+    inputs= eventReply:Events, activeSkills:Set(Skills),  
+	    exploreMaxSpeedParameter:real, exploreSafetyDistanceParameter:int, 
+	    movePriorityParameter:nat, exploreVOutValue:Velocities,
+	    explorePriorityParameter:nat;
+
+    outputs= activate:Skills, deactivate:Skills, getActiveSkills, 
+	     initiateEventMonitor:Events, stopEventMonitor:Events, 
+	     getExplorePriorityParameter, setExplorePriorityParameter:nat, 
+	     getExploreMaxSpeedParameter, setExploreMaxSpeedParameter:real, 
+	     getExploreSafetyDistanceParameter, setExploreSafetyDistanceParameter:int, 
+	     getMovePriorityParameter, setMovePriorityParameter:nat,
+	     getExploreVOutValue; 
+} ;
+
+
+layer Control: ControlLayer {
+
+    uses Motors
+
+    inputs= activate:Skills, deactivate:Skills, getActiveSkills, 
+	    initiateEventMonitor:Events, stopEventMonitor:Events, 
+	    getExplorePriorityParameter, setExplorePriorityParameter:nat, 
+	    getExploreMaxSpeedParameter, setExploreMaxSpeedParameter:real, 
+	    getExploreSafetyDistanceParameter, setExploreSafetyDistanceParameter:int, 
+	    getMovePriorityParameter, setMovePriorityParameter:nat, 
+	    getExploreVOutValue;
+
+    outputs= eventReply:Events, activeSkills:Set(Skills),  
+	     exploreMaxSpeedParameter:real, exploreSafetyDistanceParameter:int, 
+	     movePriorityParameter:nat, exploreVOutValue:Velocities,
+	     explorePriorityParameter:nat;
+
+pattern= ReactiveSkills;
+
+skills= 
+	dskill Move {
+	    inputs= vIn:Velocities;
+	},
+
+	async cskill Explore {
+	    parameters=  safetyDistance: int, maxSpeed: real;
+	    outputs= vOut:Velocities;
+	} ;
+
+connections= 
+	Explore on vOut to Move on vIn;
+
+} ;
+
+
+connections=
+	Executive on activate to Control on activate, 
+	Executive on deactivate to Control on deactivate,
+	Executive on getActiveSkills to Control on getActiveSkills,
+	Executive on initiateEventMonitor to Control on initiateEventMonitor,
+	Executive on stopEventMonitor to Control on stopEventMonitor,
+	Executive on getExploreVOutValue to Control on getExploreVOutValue,
+	Executive on getExplorePriorityParameter to Control on getExplorePriorityParameter,
+	Executive on setExplorePriorityParameter to Control on setExplorePriorityParameter,
+	Executive on getExploreMaxSpeedParameter to Control on getExploreMaxSpeedParameter,
+	Executive on setExploreMaxSpeedParameter to Control on setExploreMaxSpeedParameter,
+	Executive on getExploreSafetyDistanceParameter to Control on getExploreSafetyDistanceParameter,
+	Executive on setExploreSafetyDistanceParameter to Control on setExploreSafetyDistanceParameter,
+	Executive on getMovePriorityParameter to Control on getMovePriorityParameter,
+	Executive on setMovePriorityParameter to Control on setMovePriorityParameter,
+
+	Control on eventReply to Executive on eventReply,
+	Control on activeSkills to Executive on activeSkills,
+	Control on exploreVOutValue to Executive on exploreVOutValue,
+	Control on explorePriorityParameter to Executive on explorePriorityParameter,
+	Control on exploreMaxSpeedParameter to Executive on exploreMaxSpeedParameter,
+	Control on exploreSafetyDistanceParameter to Executive on exploreSafetyDistanceParameter,
+	Control on movePriorityParameter to Executive on movePriorityParameter,
+	
+	Control on move to PuckRobot on move;
+
+
+

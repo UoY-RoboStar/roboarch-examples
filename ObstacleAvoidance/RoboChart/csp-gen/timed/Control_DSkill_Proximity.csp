@@ -1,0 +1,9 @@
+include "defs/Control_DSkill_Proximity_defs.csp"
+include "defs/timed_definitions.csp"
+include "defs/Control_DSkill_Proximity.csp"
+include "defs/robochart_defs.csp"
+include "defs/core_defs.csp"
+include "instantiations.csp"
+include "defs/Types_defs.csp"
+		
+channel r__

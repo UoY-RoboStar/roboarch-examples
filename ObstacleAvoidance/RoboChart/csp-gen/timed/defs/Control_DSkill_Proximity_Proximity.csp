@@ -1,0 +1,1357 @@
+		module Control_DSkill_Proximity_Proximity
+		exports
+			-- definition of the behaviour of state machines (default, optimised, visible, visible and optimised)
+			external prioritise
+			transparent wbisim
+			transparent dbisim
+			transparent sbisim
+		
+			Timed(OneStep) {	
+				-- flow channels
+				channel internal__ : TIDS
+				channel enteredV, enterV, exitV, exitedV : SIDS
+				channel enter, entered: SIDS.SIDS
+				channel exit,exited: SIDS.SIDS
+				channel terminate
+				
+				-- variable channels
+				channel get_PriorityParam, set_PriorityParam: core_nat
+				channel get_gap, set_gap: core_int
+				channel get_PriorityParamInitialised, set_PriorityParamInitialised: core_boolean
+				channel get_gapSenseReceived, set_gapSenseReceived: core_boolean
+						
+				-- shared variable channels
+				
+				-- local variable channels for defined operations that are required by the state machine
+				
+				-- declaring state machine events
+				channel platformProximity__: TIDS.InOut.core_int
+				channel platformProximity: InOut.core_int
+				channel activateProximity__: TIDS.InOut
+				channel activateProximity: InOut
+				channel deactivateProximity__: TIDS.InOut
+				channel deactivateProximity: InOut
+				channel executeProximity__: TIDS.InOut
+				channel executeProximity: InOut
+				channel proximityPriorityParam__: TIDS.InOut.core_nat
+				channel proximityPriorityParam: InOut.core_nat
+				channel proximityGap__: TIDS.InOut.{(x0__,x1__) | x0__ <- core_int,x1__ <- core_nat}
+				channel proximityGap: InOut.{(x0__,x1__) | x0__ <- core_int,x1__ <- core_nat}
+				channel completeProximity__: TIDS.InOut
+				channel completeProximity: InOut
+				
+				-- declaring call and ret events for undefined operations
+			
+				-- Only the undefined operations are declared here.
+				-- If the state machine is in isolation, all required operations will be undefined.
+				-- If it is in the context of a controller, the required operations not provided by the
+				-- controller will be declared here, and the defined operations will be defined in the
+				-- context of the Controller module, and therefore within scope of the state machien module.
+				
+				
+				-- definition of functions used to expose flow channels
+				ShowEvents(P,E) = P[[ entered.x____.y____ <- enteredV.y____ | entered.x____.y____ <- E]]
+								   [[ enter.x____.y____ <- enterV.y____ | enter.x____.y____ <- E]]
+								   [[ exit.x____.y____ <- exitV.y____ | exit.x____.y____ <- E]]
+								   [[ exited.x____.y____ <- exitedV.y____ | exited.x____.y____ <- E ]]
+									 
+				ShowEnteredV(P) = P[[ entered.x____.y____ <- enteredV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+				ShowEnterV(P) = P[[ enter.x____.y____ <- enterV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+				ShowExitV(P) = P[[ exit.x____.y____ <- exitV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+				ShowExitedV(P) = P[[ exited.x____.y____ <- exitedV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+				ShowV(P) = P[[ entered.x____.y____ <- enteredV.y____ | x____ <- SIDS, y____ <- SIDS]]
+							[[ enter.x____.y____ <- enterV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+							[[ exit.x____.y____ <- exitV.y____ | x____ <- SIDS, y____ <- SIDS]]
+							[[ exited.x____.y____ <- exitedV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+				
+				-- declaring identifiers of state and final states
+				datatype SIDS = SID_Proximity
+				              | SID_Proximity_Initialise
+				              | SID_Proximity_Deactivated
+				              | SID_Proximity_Startup
+				              | SID_Proximity_Ready
+				              | SID_Proximity_HandleActuationCommands
+				              | SID_Proximity_HandleSensorData
+				              | SID_Proximity_Cleanup
+				
+				-- declaring identifiers of transitions
+				datatype TIDS = NULLTRANSITION__
+				              | TID_Proximity_InitialToInitialise
+				              | TID_Proximity_InitialiseToDeactivated
+				              | TID_Proximity_DeactivatedToStartup
+				              | TID_Proximity_StartupToReady
+				              | TID_Proximity_ReadyToHandleActuationCommands
+				              | TID_Proximity_HandleActuationCommandsToHandleSensorData
+				              | TID_Proximity_HandleSensorDataToReady
+				              | TID_Proximity_ReadyToCleanup
+				              | TID_Proximity_CleanupToDeactivated
+				              | TID_Proximity_ReadyReceivegap
+				              | TID_Proximity_HandleSensorDataReceivegap
+				              | TID_Proximity_InitialiseReceivePriorityParam
+				              | TID_Proximity_DeactivatedReceivePriorityParam
+				              | TID_Proximity_ReadyReceivePriorityParam
+				              | TID_Proximity_t0
+				
+				-- declaring identifiers of transitions that can interupt a state (excludes transitions from junctions)
+				
+				ITIDS = {
+					TID_Proximity_InitialiseToDeactivated,	TID_Proximity_DeactivatedToStartup,	TID_Proximity_StartupToReady,	TID_Proximity_ReadyToHandleActuationCommands,	TID_Proximity_HandleActuationCommandsToHandleSensorData,	TID_Proximity_HandleSensorDataToReady,	TID_Proximity_ReadyToCleanup,	TID_Proximity_CleanupToDeactivated,	TID_Proximity_ReadyReceivegap,	TID_Proximity_HandleSensorDataReceivegap,	TID_Proximity_InitialiseReceivePriorityParam,	TID_Proximity_DeactivatedReceivePriorityParam,	TID_Proximity_ReadyReceivePriorityParam,	TID_Proximity_t0
+				}
+				
+				int_int = {|
+					platformProximity__.TID_Proximity_InitialiseToDeactivated,
+					activateProximity__.TID_Proximity_InitialiseToDeactivated,
+					deactivateProximity__.TID_Proximity_InitialiseToDeactivated,
+					executeProximity__.TID_Proximity_InitialiseToDeactivated,
+					proximityPriorityParam__.TID_Proximity_InitialiseToDeactivated,
+					proximityGap__.TID_Proximity_InitialiseToDeactivated,
+					completeProximity__.TID_Proximity_InitialiseToDeactivated,
+					internal__.TID_Proximity_InitialiseToDeactivated,
+					platformProximity__.TID_Proximity_DeactivatedToStartup,
+					activateProximity__.TID_Proximity_DeactivatedToStartup,
+					deactivateProximity__.TID_Proximity_DeactivatedToStartup,
+					executeProximity__.TID_Proximity_DeactivatedToStartup,
+					proximityPriorityParam__.TID_Proximity_DeactivatedToStartup,
+					proximityGap__.TID_Proximity_DeactivatedToStartup,
+					completeProximity__.TID_Proximity_DeactivatedToStartup,
+					internal__.TID_Proximity_DeactivatedToStartup,
+					platformProximity__.TID_Proximity_StartupToReady,
+					activateProximity__.TID_Proximity_StartupToReady,
+					deactivateProximity__.TID_Proximity_StartupToReady,
+					executeProximity__.TID_Proximity_StartupToReady,
+					proximityPriorityParam__.TID_Proximity_StartupToReady,
+					proximityGap__.TID_Proximity_StartupToReady,
+					completeProximity__.TID_Proximity_StartupToReady,
+					internal__.TID_Proximity_StartupToReady,
+					platformProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					activateProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					deactivateProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					executeProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					proximityPriorityParam__.TID_Proximity_ReadyToHandleActuationCommands,
+					proximityGap__.TID_Proximity_ReadyToHandleActuationCommands,
+					completeProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					internal__.TID_Proximity_ReadyToHandleActuationCommands,
+					platformProximity__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					activateProximity__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					deactivateProximity__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					executeProximity__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					proximityPriorityParam__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					proximityGap__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					completeProximity__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					platformProximity__.TID_Proximity_HandleSensorDataToReady,
+					activateProximity__.TID_Proximity_HandleSensorDataToReady,
+					deactivateProximity__.TID_Proximity_HandleSensorDataToReady,
+					executeProximity__.TID_Proximity_HandleSensorDataToReady,
+					proximityPriorityParam__.TID_Proximity_HandleSensorDataToReady,
+					proximityGap__.TID_Proximity_HandleSensorDataToReady,
+					completeProximity__.TID_Proximity_HandleSensorDataToReady,
+					internal__.TID_Proximity_HandleSensorDataToReady,
+					platformProximity__.TID_Proximity_ReadyToCleanup,
+					activateProximity__.TID_Proximity_ReadyToCleanup,
+					deactivateProximity__.TID_Proximity_ReadyToCleanup,
+					executeProximity__.TID_Proximity_ReadyToCleanup,
+					proximityPriorityParam__.TID_Proximity_ReadyToCleanup,
+					proximityGap__.TID_Proximity_ReadyToCleanup,
+					completeProximity__.TID_Proximity_ReadyToCleanup,
+					internal__.TID_Proximity_ReadyToCleanup,
+					platformProximity__.TID_Proximity_CleanupToDeactivated,
+					activateProximity__.TID_Proximity_CleanupToDeactivated,
+					deactivateProximity__.TID_Proximity_CleanupToDeactivated,
+					executeProximity__.TID_Proximity_CleanupToDeactivated,
+					proximityPriorityParam__.TID_Proximity_CleanupToDeactivated,
+					proximityGap__.TID_Proximity_CleanupToDeactivated,
+					completeProximity__.TID_Proximity_CleanupToDeactivated,
+					internal__.TID_Proximity_CleanupToDeactivated,
+					platformProximity__.TID_Proximity_ReadyReceivegap,
+					activateProximity__.TID_Proximity_ReadyReceivegap,
+					deactivateProximity__.TID_Proximity_ReadyReceivegap,
+					executeProximity__.TID_Proximity_ReadyReceivegap,
+					proximityPriorityParam__.TID_Proximity_ReadyReceivegap,
+					proximityGap__.TID_Proximity_ReadyReceivegap,
+					completeProximity__.TID_Proximity_ReadyReceivegap,
+					internal__.TID_Proximity_ReadyReceivegap,
+					platformProximity__.TID_Proximity_HandleSensorDataReceivegap,
+					activateProximity__.TID_Proximity_HandleSensorDataReceivegap,
+					deactivateProximity__.TID_Proximity_HandleSensorDataReceivegap,
+					executeProximity__.TID_Proximity_HandleSensorDataReceivegap,
+					proximityPriorityParam__.TID_Proximity_HandleSensorDataReceivegap,
+					proximityGap__.TID_Proximity_HandleSensorDataReceivegap,
+					completeProximity__.TID_Proximity_HandleSensorDataReceivegap,
+					internal__.TID_Proximity_HandleSensorDataReceivegap,
+					platformProximity__.TID_Proximity_InitialiseReceivePriorityParam,
+					activateProximity__.TID_Proximity_InitialiseReceivePriorityParam,
+					deactivateProximity__.TID_Proximity_InitialiseReceivePriorityParam,
+					executeProximity__.TID_Proximity_InitialiseReceivePriorityParam,
+					proximityPriorityParam__.TID_Proximity_InitialiseReceivePriorityParam,
+					proximityGap__.TID_Proximity_InitialiseReceivePriorityParam,
+					completeProximity__.TID_Proximity_InitialiseReceivePriorityParam,
+					internal__.TID_Proximity_InitialiseReceivePriorityParam,
+					platformProximity__.TID_Proximity_DeactivatedReceivePriorityParam,
+					activateProximity__.TID_Proximity_DeactivatedReceivePriorityParam,
+					deactivateProximity__.TID_Proximity_DeactivatedReceivePriorityParam,
+					executeProximity__.TID_Proximity_DeactivatedReceivePriorityParam,
+					proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,
+					proximityGap__.TID_Proximity_DeactivatedReceivePriorityParam,
+					completeProximity__.TID_Proximity_DeactivatedReceivePriorityParam,
+					internal__.TID_Proximity_DeactivatedReceivePriorityParam,
+					platformProximity__.TID_Proximity_ReadyReceivePriorityParam,
+					activateProximity__.TID_Proximity_ReadyReceivePriorityParam,
+					deactivateProximity__.TID_Proximity_ReadyReceivePriorityParam,
+					executeProximity__.TID_Proximity_ReadyReceivePriorityParam,
+					proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam,
+					proximityGap__.TID_Proximity_ReadyReceivePriorityParam,
+					completeProximity__.TID_Proximity_ReadyReceivePriorityParam,
+					internal__.TID_Proximity_ReadyReceivePriorityParam,
+					platformProximity__.TID_Proximity_t0,
+					activateProximity__.TID_Proximity_t0,
+					deactivateProximity__.TID_Proximity_t0,
+					executeProximity__.TID_Proximity_t0,
+					proximityPriorityParam__.TID_Proximity_t0,
+					proximityGap__.TID_Proximity_t0,
+					completeProximity__.TID_Proximity_t0,
+					internal__.TID_Proximity_t0
+				|}
+					
+				
+				internal_events = {|enter,entered,exit,exited|}
+				shared_variable_events = {|
+				|}
+						
+				
+				-- declaring all states
+				CS_Proximity_Initialise_sync = {|
+					enter.y____.x____, 
+					entered.y____.x____, 
+					exit.y____.x____, 
+					exited.y____.x____,
+					enter.x____.y____, 
+					entered.x____.y____, 
+					exit.x____.y____, 
+					exited.x____.y____ |
+					x____ <- {SID_Proximity_Initialise,SID_Proximity_Deactivated,SID_Proximity_Startup,SID_Proximity_Ready,SID_Proximity_HandleActuationCommands,SID_Proximity_HandleSensorData,SID_Proximity_Cleanup},
+					y____ <- {SID_Proximity_Initialise}
+				|}
+				
+				
+				Proximity_Initialise_triggers = {|
+					internal__.TID_Proximity_t0,
+					internal__.TID_Proximity_HandleSensorDataToReady,
+					internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					internal__.TID_Proximity_InitialiseToDeactivated,
+					internal__.TID_Proximity_StartupToReady,
+					platformProximity__.TID_Proximity_ReadyReceivegap,
+					internal__.TID_Proximity_CleanupToDeactivated,
+					activateProximity__.TID_Proximity_DeactivatedToStartup,
+					proximityPriorityParam__.TID_Proximity_InitialiseReceivePriorityParam,
+					internal__.TID_Proximity_HandleSensorDataReceivegap,
+					proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,
+					executeProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					deactivateProximity__.TID_Proximity_ReadyToCleanup,
+					proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam
+				|}
+				
+				State_Proximity_Initialise(id__) = let
+					T_Proximity_InitialiseToDeactivated(id__) = internal__!TID_Proximity_InitialiseToDeactivated ->  exit.SID_Proximity_Initialise.SID_Proximity_Initialise -> SKIP;
+										SKIP;exited.SID_Proximity_Initialise.SID_Proximity_Initialise -> SKIP;
+										enter!SID_Proximity_Initialise!SID_Proximity_Deactivated -> entered!SID_Proximity_Initialise!SID_Proximity_Deactivated ->
+										State_Proximity_Initialise(id__)
+					T_Proximity_InitialiseReceivePriorityParam(id__) = proximityPriorityParam__!TID_Proximity_InitialiseReceivePriorityParam.in?PriorityParam -> set_PriorityParam!PriorityParam ->  (exit.SID_Proximity_Initialise.SID_Proximity_Initialise -> SKIP;
+										SKIP;exited.SID_Proximity_Initialise.SID_Proximity_Initialise -> SKIP;
+										true & (set_PriorityParamInitialised!true -> SKIP);enter!SID_Proximity_Initialise!SID_Proximity_Initialise -> State_Proximity_Initialise_execute(id__,SID_Proximity_Initialise)
+					)
+					State_Proximity_Initialise_execute(id__,o____) = SKIP; 
+						entered!o____!SID_Proximity_Initialise ->
+						(SKIP; STOP /\ (
+							T_Proximity_InitialiseToDeactivated(id__)[]
+							T_Proximity_InitialiseReceivePriorityParam(id__)
+							[]
+							internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_InitialiseToDeactivated,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_InitialiseReceivePriorityParam,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Proximity_Initialise})!SID_Proximity_Initialise -> (
+									SKIP;
+									exited!y____!SID_Proximity_Initialise -> SKIP);
+									State_Proximity_Initialise(id__)
+							[] platformProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_InitialiseToDeactivated,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_InitialiseReceivePriorityParam,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Initialise})!SID_Proximity_Initialise -> (
+									SKIP;
+									exited!y____!SID_Proximity_Initialise -> SKIP);
+									State_Proximity_Initialise(id__)
+							[] activateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_InitialiseToDeactivated,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_InitialiseReceivePriorityParam,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Initialise})!SID_Proximity_Initialise -> (
+									SKIP;
+									exited!y____!SID_Proximity_Initialise -> SKIP);
+									State_Proximity_Initialise(id__)
+							[] deactivateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_InitialiseToDeactivated,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_InitialiseReceivePriorityParam,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Initialise})!SID_Proximity_Initialise -> (
+									SKIP;
+									exited!y____!SID_Proximity_Initialise -> SKIP);
+									State_Proximity_Initialise(id__)
+							[] executeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_InitialiseToDeactivated,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_InitialiseReceivePriorityParam,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Initialise})!SID_Proximity_Initialise -> (
+									SKIP;
+									exited!y____!SID_Proximity_Initialise -> SKIP);
+									State_Proximity_Initialise(id__)
+							[] proximityPriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_InitialiseToDeactivated,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_InitialiseReceivePriorityParam,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Initialise})!SID_Proximity_Initialise -> (
+									SKIP;
+									exited!y____!SID_Proximity_Initialise -> SKIP);
+									State_Proximity_Initialise(id__)
+							[] proximityGap__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_InitialiseToDeactivated,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_InitialiseReceivePriorityParam,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Initialise})!SID_Proximity_Initialise -> (
+									SKIP;
+									exited!y____!SID_Proximity_Initialise -> SKIP);
+									State_Proximity_Initialise(id__)
+							[] completeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_InitialiseToDeactivated,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_InitialiseReceivePriorityParam,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Initialise})!SID_Proximity_Initialise -> (
+									SKIP;
+									exited!y____!SID_Proximity_Initialise -> SKIP);
+									State_Proximity_Initialise(id__)
+						))
+				within
+					enter?x____:diff(SIDS,{SID_Proximity_Initialise})!SID_Proximity_Initialise -> (State_Proximity_Initialise_execute(id__,x____))
+				
+				CS_Proximity_Deactivated_sync = {|
+					enter.y____.x____, 
+					entered.y____.x____, 
+					exit.y____.x____, 
+					exited.y____.x____,
+					enter.x____.y____, 
+					entered.x____.y____, 
+					exit.x____.y____, 
+					exited.x____.y____ |
+					x____ <- {SID_Proximity_Initialise,SID_Proximity_Deactivated,SID_Proximity_Startup,SID_Proximity_Ready,SID_Proximity_HandleActuationCommands,SID_Proximity_HandleSensorData,SID_Proximity_Cleanup},
+					y____ <- {SID_Proximity_Deactivated}
+				|}
+				
+				
+				Proximity_Deactivated_triggers = {|
+					internal__.TID_Proximity_t0,
+					internal__.TID_Proximity_HandleSensorDataToReady,
+					internal__.TID_Proximity_HandleSensorDataReceivegap,
+					internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					internal__.TID_Proximity_StartupToReady,
+					platformProximity__.TID_Proximity_ReadyReceivegap,
+					internal__.TID_Proximity_CleanupToDeactivated,
+					activateProximity__.TID_Proximity_DeactivatedToStartup,
+					proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,
+					executeProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					deactivateProximity__.TID_Proximity_ReadyToCleanup,
+					proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam
+				|}
+				
+				State_Proximity_Deactivated(id__) = let
+					T_Proximity_DeactivatedToStartup(id__) = activateProximity__!TID_Proximity_DeactivatedToStartup.in ->  (exit.SID_Proximity_Deactivated.SID_Proximity_Deactivated -> SKIP;
+										SKIP;exited.SID_Proximity_Deactivated.SID_Proximity_Deactivated -> SKIP;
+										enter!SID_Proximity_Deactivated!SID_Proximity_Startup -> entered!SID_Proximity_Deactivated!SID_Proximity_Startup ->
+										State_Proximity_Deactivated(id__)
+					)
+					T_Proximity_DeactivatedReceivePriorityParam(id__) = proximityPriorityParam__!TID_Proximity_DeactivatedReceivePriorityParam.in?PriorityParam -> set_PriorityParam!PriorityParam ->  (exit.SID_Proximity_Deactivated.SID_Proximity_Deactivated -> SKIP;
+										SKIP;exited.SID_Proximity_Deactivated.SID_Proximity_Deactivated -> SKIP;
+										enter!SID_Proximity_Deactivated!SID_Proximity_Deactivated -> State_Proximity_Deactivated_execute(id__,SID_Proximity_Deactivated)
+					)
+					State_Proximity_Deactivated_execute(id__,o____) = SKIP; 
+						entered!o____!SID_Proximity_Deactivated ->
+						(SKIP; STOP /\ (
+							T_Proximity_DeactivatedToStartup(id__)[]
+							T_Proximity_DeactivatedReceivePriorityParam(id__)
+							[]
+							internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Proximity_Deactivated})!SID_Proximity_Deactivated -> (
+									SKIP;
+									exited!y____!SID_Proximity_Deactivated -> SKIP);
+									State_Proximity_Deactivated(id__)
+							[] platformProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Deactivated})!SID_Proximity_Deactivated -> (
+									SKIP;
+									exited!y____!SID_Proximity_Deactivated -> SKIP);
+									State_Proximity_Deactivated(id__)
+							[] activateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Deactivated})!SID_Proximity_Deactivated -> (
+									SKIP;
+									exited!y____!SID_Proximity_Deactivated -> SKIP);
+									State_Proximity_Deactivated(id__)
+							[] deactivateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Deactivated})!SID_Proximity_Deactivated -> (
+									SKIP;
+									exited!y____!SID_Proximity_Deactivated -> SKIP);
+									State_Proximity_Deactivated(id__)
+							[] executeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Deactivated})!SID_Proximity_Deactivated -> (
+									SKIP;
+									exited!y____!SID_Proximity_Deactivated -> SKIP);
+									State_Proximity_Deactivated(id__)
+							[] proximityPriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Deactivated})!SID_Proximity_Deactivated -> (
+									SKIP;
+									exited!y____!SID_Proximity_Deactivated -> SKIP);
+									State_Proximity_Deactivated(id__)
+							[] proximityGap__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Deactivated})!SID_Proximity_Deactivated -> (
+									SKIP;
+									exited!y____!SID_Proximity_Deactivated -> SKIP);
+									State_Proximity_Deactivated(id__)
+							[] completeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Deactivated})!SID_Proximity_Deactivated -> (
+									SKIP;
+									exited!y____!SID_Proximity_Deactivated -> SKIP);
+									State_Proximity_Deactivated(id__)
+						))
+				within
+					enter?x____:diff(SIDS,{SID_Proximity_Deactivated})!SID_Proximity_Deactivated -> (State_Proximity_Deactivated_execute(id__,x____))
+				
+				CS_Proximity_Startup_sync = {|
+					enter.y____.x____, 
+					entered.y____.x____, 
+					exit.y____.x____, 
+					exited.y____.x____,
+					enter.x____.y____, 
+					entered.x____.y____, 
+					exit.x____.y____, 
+					exited.x____.y____ |
+					x____ <- {SID_Proximity_Initialise,SID_Proximity_Deactivated,SID_Proximity_Startup,SID_Proximity_Ready,SID_Proximity_HandleActuationCommands,SID_Proximity_HandleSensorData,SID_Proximity_Cleanup},
+					y____ <- {SID_Proximity_Startup}
+				|}
+				
+				
+				Proximity_Startup_triggers = {|
+					internal__.TID_Proximity_t0,
+					internal__.TID_Proximity_HandleSensorDataToReady,
+					internal__.TID_Proximity_HandleSensorDataReceivegap,
+					internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					internal__.TID_Proximity_StartupToReady,
+					platformProximity__.TID_Proximity_ReadyReceivegap,
+					internal__.TID_Proximity_CleanupToDeactivated,
+					activateProximity__.TID_Proximity_DeactivatedToStartup,
+					proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,
+					executeProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					deactivateProximity__.TID_Proximity_ReadyToCleanup,
+					proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam
+				|}
+				
+				State_Proximity_Startup(id__) = let
+					T_Proximity_StartupToReady(id__) = internal__!TID_Proximity_StartupToReady ->  exit.SID_Proximity_Startup.SID_Proximity_Startup -> SKIP;
+										SKIP;exited.SID_Proximity_Startup.SID_Proximity_Startup -> SKIP;
+										enter!SID_Proximity_Startup!SID_Proximity_Ready -> entered!SID_Proximity_Startup!SID_Proximity_Ready ->
+										State_Proximity_Startup(id__)
+					State_Proximity_Startup_execute(id__,o____) = SKIP; 
+						entered!o____!SID_Proximity_Startup ->
+						(SKIP; STOP /\ (
+							T_Proximity_StartupToReady(id__)
+							[]
+							internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Proximity_Startup})!SID_Proximity_Startup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Startup -> SKIP);
+									State_Proximity_Startup(id__)
+							[] platformProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Startup})!SID_Proximity_Startup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Startup -> SKIP);
+									State_Proximity_Startup(id__)
+							[] activateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Startup})!SID_Proximity_Startup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Startup -> SKIP);
+									State_Proximity_Startup(id__)
+							[] deactivateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Startup})!SID_Proximity_Startup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Startup -> SKIP);
+									State_Proximity_Startup(id__)
+							[] executeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Startup})!SID_Proximity_Startup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Startup -> SKIP);
+									State_Proximity_Startup(id__)
+							[] proximityPriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Startup})!SID_Proximity_Startup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Startup -> SKIP);
+									State_Proximity_Startup(id__)
+							[] proximityGap__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Startup})!SID_Proximity_Startup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Startup -> SKIP);
+									State_Proximity_Startup(id__)
+							[] completeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Startup})!SID_Proximity_Startup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Startup -> SKIP);
+									State_Proximity_Startup(id__)
+						))
+				within
+					enter?x____:diff(SIDS,{SID_Proximity_Startup})!SID_Proximity_Startup -> (State_Proximity_Startup_execute(id__,x____))
+				
+				CS_Proximity_Ready_sync = {|
+					enter.y____.x____, 
+					entered.y____.x____, 
+					exit.y____.x____, 
+					exited.y____.x____,
+					enter.x____.y____, 
+					entered.x____.y____, 
+					exit.x____.y____, 
+					exited.x____.y____ |
+					x____ <- {SID_Proximity_Initialise,SID_Proximity_Deactivated,SID_Proximity_Startup,SID_Proximity_Ready,SID_Proximity_HandleActuationCommands,SID_Proximity_HandleSensorData,SID_Proximity_Cleanup},
+					y____ <- {SID_Proximity_Ready}
+				|}
+				
+				
+				Proximity_Ready_triggers = {|
+					internal__.TID_Proximity_t0,
+					internal__.TID_Proximity_HandleSensorDataToReady,
+					internal__.TID_Proximity_HandleSensorDataReceivegap,
+					internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					internal__.TID_Proximity_StartupToReady,
+					platformProximity__.TID_Proximity_ReadyReceivegap,
+					internal__.TID_Proximity_CleanupToDeactivated,
+					activateProximity__.TID_Proximity_DeactivatedToStartup,
+					proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,
+					executeProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					deactivateProximity__.TID_Proximity_ReadyToCleanup,
+					proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam
+				|}
+				
+				State_Proximity_Ready(id__) = let
+					T_Proximity_ReadyToHandleActuationCommands(id__) = executeProximity__!TID_Proximity_ReadyToHandleActuationCommands.in ->  (exit.SID_Proximity_Ready.SID_Proximity_Ready -> SKIP;
+										SKIP;exited.SID_Proximity_Ready.SID_Proximity_Ready -> SKIP;
+										enter!SID_Proximity_Ready!SID_Proximity_HandleActuationCommands -> entered!SID_Proximity_Ready!SID_Proximity_HandleActuationCommands ->
+										State_Proximity_Ready(id__)
+					)
+					T_Proximity_ReadyToCleanup(id__) = deactivateProximity__!TID_Proximity_ReadyToCleanup.in ->  (exit.SID_Proximity_Ready.SID_Proximity_Ready -> SKIP;
+										SKIP;exited.SID_Proximity_Ready.SID_Proximity_Ready -> SKIP;
+										enter!SID_Proximity_Ready!SID_Proximity_Cleanup -> entered!SID_Proximity_Ready!SID_Proximity_Cleanup ->
+										State_Proximity_Ready(id__)
+					)
+					T_Proximity_ReadyReceivegap(id__) = platformProximity__!TID_Proximity_ReadyReceivegap.in?gap -> set_gap!gap ->  (exit.SID_Proximity_Ready.SID_Proximity_Ready -> SKIP;
+										SKIP;exited.SID_Proximity_Ready.SID_Proximity_Ready -> SKIP;
+										true & (set_gapSenseReceived!true -> SKIP);enter!SID_Proximity_Ready!SID_Proximity_Ready -> State_Proximity_Ready_execute(id__,SID_Proximity_Ready)
+					)
+					T_Proximity_ReadyReceivePriorityParam(id__) = proximityPriorityParam__!TID_Proximity_ReadyReceivePriorityParam.in?PriorityParam -> set_PriorityParam!PriorityParam ->  (exit.SID_Proximity_Ready.SID_Proximity_Ready -> SKIP;
+										SKIP;exited.SID_Proximity_Ready.SID_Proximity_Ready -> SKIP;
+										enter!SID_Proximity_Ready!SID_Proximity_Ready -> State_Proximity_Ready_execute(id__,SID_Proximity_Ready)
+					)
+					State_Proximity_Ready_execute(id__,o____) = SKIP; 
+						entered!o____!SID_Proximity_Ready ->
+						(SKIP; STOP /\ (
+							T_Proximity_ReadyToHandleActuationCommands(id__)[]
+							T_Proximity_ReadyToCleanup(id__)[]
+							T_Proximity_ReadyReceivegap(id__)[]
+							T_Proximity_ReadyReceivePriorityParam(id__)
+							[]
+							internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Proximity_Ready})!SID_Proximity_Ready -> (
+									SKIP;
+									exited!y____!SID_Proximity_Ready -> SKIP);
+									State_Proximity_Ready(id__)
+							[] platformProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Ready})!SID_Proximity_Ready -> (
+									SKIP;
+									exited!y____!SID_Proximity_Ready -> SKIP);
+									State_Proximity_Ready(id__)
+							[] activateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Ready})!SID_Proximity_Ready -> (
+									SKIP;
+									exited!y____!SID_Proximity_Ready -> SKIP);
+									State_Proximity_Ready(id__)
+							[] deactivateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Ready})!SID_Proximity_Ready -> (
+									SKIP;
+									exited!y____!SID_Proximity_Ready -> SKIP);
+									State_Proximity_Ready(id__)
+							[] executeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Ready})!SID_Proximity_Ready -> (
+									SKIP;
+									exited!y____!SID_Proximity_Ready -> SKIP);
+									State_Proximity_Ready(id__)
+							[] proximityPriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Ready})!SID_Proximity_Ready -> (
+									SKIP;
+									exited!y____!SID_Proximity_Ready -> SKIP);
+									State_Proximity_Ready(id__)
+							[] proximityGap__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Ready})!SID_Proximity_Ready -> (
+									SKIP;
+									exited!y____!SID_Proximity_Ready -> SKIP);
+									State_Proximity_Ready(id__)
+							[] completeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Ready})!SID_Proximity_Ready -> (
+									SKIP;
+									exited!y____!SID_Proximity_Ready -> SKIP);
+									State_Proximity_Ready(id__)
+						))
+				within
+					enter?x____:diff(SIDS,{SID_Proximity_Ready})!SID_Proximity_Ready -> (State_Proximity_Ready_execute(id__,x____))
+				
+				CS_Proximity_HandleActuationCommands_sync = {|
+					enter.y____.x____, 
+					entered.y____.x____, 
+					exit.y____.x____, 
+					exited.y____.x____,
+					enter.x____.y____, 
+					entered.x____.y____, 
+					exit.x____.y____, 
+					exited.x____.y____ |
+					x____ <- {SID_Proximity_Initialise,SID_Proximity_Deactivated,SID_Proximity_Startup,SID_Proximity_Ready,SID_Proximity_HandleActuationCommands,SID_Proximity_HandleSensorData,SID_Proximity_Cleanup},
+					y____ <- {SID_Proximity_HandleActuationCommands}
+				|}
+				
+				
+				Proximity_HandleActuationCommands_triggers = {|
+					internal__.TID_Proximity_t0,
+					internal__.TID_Proximity_HandleSensorDataToReady,
+					internal__.TID_Proximity_HandleSensorDataReceivegap,
+					internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					internal__.TID_Proximity_StartupToReady,
+					platformProximity__.TID_Proximity_ReadyReceivegap,
+					internal__.TID_Proximity_CleanupToDeactivated,
+					activateProximity__.TID_Proximity_DeactivatedToStartup,
+					proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,
+					executeProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					deactivateProximity__.TID_Proximity_ReadyToCleanup,
+					proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam
+				|}
+				
+				State_Proximity_HandleActuationCommands(id__) = let
+					T_Proximity_HandleActuationCommandsToHandleSensorData(id__) = internal__!TID_Proximity_HandleActuationCommandsToHandleSensorData ->  exit.SID_Proximity_HandleActuationCommands.SID_Proximity_HandleActuationCommands -> SKIP;
+										SKIP;exited.SID_Proximity_HandleActuationCommands.SID_Proximity_HandleActuationCommands -> SKIP;
+										enter!SID_Proximity_HandleActuationCommands!SID_Proximity_HandleSensorData -> entered!SID_Proximity_HandleActuationCommands!SID_Proximity_HandleSensorData ->
+										State_Proximity_HandleActuationCommands(id__)
+					T_Proximity_t0(id__) = internal__!TID_Proximity_t0 ->  exit.SID_Proximity_HandleActuationCommands.SID_Proximity_HandleActuationCommands -> SKIP;
+										SKIP;exited.SID_Proximity_HandleActuationCommands.SID_Proximity_HandleActuationCommands -> SKIP;
+										true&(completeProximity.out -> SKIP);enter!SID_Proximity_HandleActuationCommands!SID_Proximity_Ready -> entered!SID_Proximity_HandleActuationCommands!SID_Proximity_Ready ->
+										State_Proximity_HandleActuationCommands(id__)
+					State_Proximity_HandleActuationCommands_execute(id__,o____) = SKIP; 
+						entered!o____!SID_Proximity_HandleActuationCommands ->
+						(SKIP; STOP /\ (
+							T_Proximity_HandleActuationCommandsToHandleSensorData(id__)[]
+							T_Proximity_t0(id__)
+							[]
+							internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Proximity_HandleActuationCommands})!SID_Proximity_HandleActuationCommands -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleActuationCommands -> SKIP);
+									State_Proximity_HandleActuationCommands(id__)
+							[] platformProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleActuationCommands})!SID_Proximity_HandleActuationCommands -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleActuationCommands -> SKIP);
+									State_Proximity_HandleActuationCommands(id__)
+							[] activateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleActuationCommands})!SID_Proximity_HandleActuationCommands -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleActuationCommands -> SKIP);
+									State_Proximity_HandleActuationCommands(id__)
+							[] deactivateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleActuationCommands})!SID_Proximity_HandleActuationCommands -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleActuationCommands -> SKIP);
+									State_Proximity_HandleActuationCommands(id__)
+							[] executeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleActuationCommands})!SID_Proximity_HandleActuationCommands -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleActuationCommands -> SKIP);
+									State_Proximity_HandleActuationCommands(id__)
+							[] proximityPriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleActuationCommands})!SID_Proximity_HandleActuationCommands -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleActuationCommands -> SKIP);
+									State_Proximity_HandleActuationCommands(id__)
+							[] proximityGap__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleActuationCommands})!SID_Proximity_HandleActuationCommands -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleActuationCommands -> SKIP);
+									State_Proximity_HandleActuationCommands(id__)
+							[] completeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleActuationCommands})!SID_Proximity_HandleActuationCommands -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleActuationCommands -> SKIP);
+									State_Proximity_HandleActuationCommands(id__)
+						))
+				within
+					enter?x____:diff(SIDS,{SID_Proximity_HandleActuationCommands})!SID_Proximity_HandleActuationCommands -> (State_Proximity_HandleActuationCommands_execute(id__,x____))
+				
+				CS_Proximity_HandleSensorData_sync = {|
+					enter.y____.x____, 
+					entered.y____.x____, 
+					exit.y____.x____, 
+					exited.y____.x____,
+					enter.x____.y____, 
+					entered.x____.y____, 
+					exit.x____.y____, 
+					exited.x____.y____ |
+					x____ <- {SID_Proximity_Initialise,SID_Proximity_Deactivated,SID_Proximity_Startup,SID_Proximity_Ready,SID_Proximity_HandleActuationCommands,SID_Proximity_HandleSensorData,SID_Proximity_Cleanup},
+					y____ <- {SID_Proximity_HandleSensorData}
+				|}
+				
+				
+				Proximity_HandleSensorData_triggers = {|
+					internal__.TID_Proximity_HandleSensorDataToReady,
+					internal__.TID_Proximity_t0,
+					internal__.TID_Proximity_HandleSensorDataReceivegap,
+					internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					internal__.TID_Proximity_StartupToReady,
+					platformProximity__.TID_Proximity_ReadyReceivegap,
+					internal__.TID_Proximity_CleanupToDeactivated,
+					activateProximity__.TID_Proximity_DeactivatedToStartup,
+					proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,
+					executeProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					deactivateProximity__.TID_Proximity_ReadyToCleanup,
+					proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam
+				|}
+				
+				State_Proximity_HandleSensorData(id__) = let
+					T_Proximity_HandleSensorDataToReady(id__) = internal__!TID_Proximity_HandleSensorDataToReady ->  exit.SID_Proximity_HandleSensorData.SID_Proximity_HandleSensorData -> SKIP;
+										SKIP;exited.SID_Proximity_HandleSensorData.SID_Proximity_HandleSensorData -> SKIP;
+										true&(completeProximity.out -> SKIP);enter!SID_Proximity_HandleSensorData!SID_Proximity_Ready -> entered!SID_Proximity_HandleSensorData!SID_Proximity_Ready ->
+										State_Proximity_HandleSensorData(id__)
+					T_Proximity_HandleSensorDataReceivegap(id__) = internal__!TID_Proximity_HandleSensorDataReceivegap ->  exit.SID_Proximity_HandleSensorData.SID_Proximity_HandleSensorData -> SKIP;
+										SKIP;exited.SID_Proximity_HandleSensorData.SID_Proximity_HandleSensorData -> SKIP;
+										get_gap?gap -> get_PriorityParam?PriorityParam -> true&(proximityGap.out!(gap,PriorityParam) -> SKIP);true & (set_gapSenseReceived!false -> SKIP);enter!SID_Proximity_HandleSensorData!SID_Proximity_HandleSensorData -> State_Proximity_HandleSensorData_execute(id__,SID_Proximity_HandleSensorData)
+					State_Proximity_HandleSensorData_execute(id__,o____) = SKIP; 
+						entered!o____!SID_Proximity_HandleSensorData ->
+						(SKIP; STOP /\ (
+							T_Proximity_HandleSensorDataToReady(id__)[]
+							T_Proximity_HandleSensorDataReceivegap(id__)
+							[]
+							internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_HandleSensorDataToReady,TID_Proximity_t0,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Proximity_HandleSensorData})!SID_Proximity_HandleSensorData -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleSensorData -> SKIP);
+									State_Proximity_HandleSensorData(id__)
+							[] platformProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_HandleSensorDataToReady,TID_Proximity_t0,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleSensorData})!SID_Proximity_HandleSensorData -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleSensorData -> SKIP);
+									State_Proximity_HandleSensorData(id__)
+							[] activateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_HandleSensorDataToReady,TID_Proximity_t0,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleSensorData})!SID_Proximity_HandleSensorData -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleSensorData -> SKIP);
+									State_Proximity_HandleSensorData(id__)
+							[] deactivateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_HandleSensorDataToReady,TID_Proximity_t0,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleSensorData})!SID_Proximity_HandleSensorData -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleSensorData -> SKIP);
+									State_Proximity_HandleSensorData(id__)
+							[] executeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_HandleSensorDataToReady,TID_Proximity_t0,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleSensorData})!SID_Proximity_HandleSensorData -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleSensorData -> SKIP);
+									State_Proximity_HandleSensorData(id__)
+							[] proximityPriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_HandleSensorDataToReady,TID_Proximity_t0,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleSensorData})!SID_Proximity_HandleSensorData -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleSensorData -> SKIP);
+									State_Proximity_HandleSensorData(id__)
+							[] proximityGap__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_HandleSensorDataToReady,TID_Proximity_t0,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleSensorData})!SID_Proximity_HandleSensorData -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleSensorData -> SKIP);
+									State_Proximity_HandleSensorData(id__)
+							[] completeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_HandleSensorDataToReady,TID_Proximity_t0,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_ReadyReceivegap,TID_Proximity_CleanupToDeactivated,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_HandleSensorData})!SID_Proximity_HandleSensorData -> (
+									SKIP;
+									exited!y____!SID_Proximity_HandleSensorData -> SKIP);
+									State_Proximity_HandleSensorData(id__)
+						))
+				within
+					enter?x____:diff(SIDS,{SID_Proximity_HandleSensorData})!SID_Proximity_HandleSensorData -> (State_Proximity_HandleSensorData_execute(id__,x____))
+				
+				CS_Proximity_Cleanup_sync = {|
+					enter.y____.x____, 
+					entered.y____.x____, 
+					exit.y____.x____, 
+					exited.y____.x____,
+					enter.x____.y____, 
+					entered.x____.y____, 
+					exit.x____.y____, 
+					exited.x____.y____ |
+					x____ <- {SID_Proximity_Initialise,SID_Proximity_Deactivated,SID_Proximity_Startup,SID_Proximity_Ready,SID_Proximity_HandleActuationCommands,SID_Proximity_HandleSensorData,SID_Proximity_Cleanup},
+					y____ <- {SID_Proximity_Cleanup}
+				|}
+				
+				
+				Proximity_Cleanup_triggers = {|
+					internal__.TID_Proximity_t0,
+					internal__.TID_Proximity_HandleSensorDataToReady,
+					internal__.TID_Proximity_HandleSensorDataReceivegap,
+					internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+					internal__.TID_Proximity_StartupToReady,
+					internal__.TID_Proximity_CleanupToDeactivated,
+					platformProximity__.TID_Proximity_ReadyReceivegap,
+					activateProximity__.TID_Proximity_DeactivatedToStartup,
+					proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,
+					executeProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+					deactivateProximity__.TID_Proximity_ReadyToCleanup,
+					proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam
+				|}
+				
+				State_Proximity_Cleanup(id__) = let
+					T_Proximity_CleanupToDeactivated(id__) = internal__!TID_Proximity_CleanupToDeactivated ->  exit.SID_Proximity_Cleanup.SID_Proximity_Cleanup -> SKIP;
+										SKIP;exited.SID_Proximity_Cleanup.SID_Proximity_Cleanup -> SKIP;
+										enter!SID_Proximity_Cleanup!SID_Proximity_Deactivated -> entered!SID_Proximity_Cleanup!SID_Proximity_Deactivated ->
+										State_Proximity_Cleanup(id__)
+					State_Proximity_Cleanup_execute(id__,o____) = SKIP; 
+						entered!o____!SID_Proximity_Cleanup ->
+						(SKIP; STOP /\ (
+							T_Proximity_CleanupToDeactivated(id__)
+							[]
+							internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_CleanupToDeactivated,TID_Proximity_ReadyReceivegap,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Proximity_Cleanup})!SID_Proximity_Cleanup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Cleanup -> SKIP);
+									State_Proximity_Cleanup(id__)
+							[] platformProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_CleanupToDeactivated,TID_Proximity_ReadyReceivegap,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Cleanup})!SID_Proximity_Cleanup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Cleanup -> SKIP);
+									State_Proximity_Cleanup(id__)
+							[] activateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_CleanupToDeactivated,TID_Proximity_ReadyReceivegap,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Cleanup})!SID_Proximity_Cleanup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Cleanup -> SKIP);
+									State_Proximity_Cleanup(id__)
+							[] deactivateProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_CleanupToDeactivated,TID_Proximity_ReadyReceivegap,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Cleanup})!SID_Proximity_Cleanup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Cleanup -> SKIP);
+									State_Proximity_Cleanup(id__)
+							[] executeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_CleanupToDeactivated,TID_Proximity_ReadyReceivegap,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Cleanup})!SID_Proximity_Cleanup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Cleanup -> SKIP);
+									State_Proximity_Cleanup(id__)
+							[] proximityPriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_CleanupToDeactivated,TID_Proximity_ReadyReceivegap,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Cleanup})!SID_Proximity_Cleanup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Cleanup -> SKIP);
+									State_Proximity_Cleanup(id__)
+							[] proximityGap__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_CleanupToDeactivated,TID_Proximity_ReadyReceivegap,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Proximity_Cleanup})!SID_Proximity_Cleanup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Cleanup -> SKIP);
+									State_Proximity_Cleanup(id__)
+							[] completeProximity__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Proximity_t0,TID_Proximity_HandleSensorDataToReady,TID_Proximity_HandleSensorDataReceivegap,TID_Proximity_HandleActuationCommandsToHandleSensorData,TID_Proximity_StartupToReady,TID_Proximity_CleanupToDeactivated,TID_Proximity_ReadyReceivegap,TID_Proximity_DeactivatedToStartup,TID_Proximity_DeactivatedReceivePriorityParam,TID_Proximity_ReadyToHandleActuationCommands,TID_Proximity_ReadyToCleanup,TID_Proximity_ReadyReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Proximity_Cleanup})!SID_Proximity_Cleanup -> (
+									SKIP;
+									exited!y____!SID_Proximity_Cleanup -> SKIP);
+									State_Proximity_Cleanup(id__)
+						))
+				within
+					enter?x____:diff(SIDS,{SID_Proximity_Cleanup})!SID_Proximity_Cleanup -> (State_Proximity_Cleanup_execute(id__,x____))
+				
+				
+				I_Proximity_Initial(id__) = let
+					T_Proximity_InitialToInitialise(id__) = internal__!TID_Proximity_InitialToInitialise -> enter!SID_Proximity!SID_Proximity_Initialise -> entered!SID_Proximity!SID_Proximity_Initialise ->
+					SKIP
+				within
+					T_Proximity_InitialToInitialise(id__)
+				
+				
+				State_Proximity_Initialise_R(id__) = 
+					State_Proximity_Initialise(id__)
+						[|diff(int_int,Proximity_Initialise_triggers)|]
+					SKIP
+						 		
+				State_Proximity_Deactivated_R(id__) = 
+					State_Proximity_Deactivated(id__)
+						[|diff(int_int,Proximity_Deactivated_triggers)|]
+					SKIP
+						 		
+				State_Proximity_Startup_R(id__) = 
+					State_Proximity_Startup(id__)
+						[|diff(int_int,Proximity_Startup_triggers)|]
+					SKIP
+						 		
+				State_Proximity_Ready_R(id__) = 
+					State_Proximity_Ready(id__)
+						[|diff(int_int,Proximity_Ready_triggers)|]
+					SKIP
+						 		
+				State_Proximity_HandleActuationCommands_R(id__) = 
+					State_Proximity_HandleActuationCommands(id__)
+						[|diff(int_int,Proximity_HandleActuationCommands_triggers)|]
+					SKIP
+						 		
+				State_Proximity_HandleSensorData_R(id__) = 
+					State_Proximity_HandleSensorData(id__)
+						[|diff(int_int,Proximity_HandleSensorData_triggers)|]
+					SKIP
+						 		
+				State_Proximity_Cleanup_R(id__) = 
+					State_Proximity_Cleanup(id__)
+						[|diff(int_int,Proximity_Cleanup_triggers)|]
+					SKIP
+						 		
+					
+				STM(id__) = (
+					I_Proximity_Initial(id__)
+						[|
+							{|enter.x____.y____, entered.x____.y____, exit.x____.y____, exited.x____.y____ |
+								x____ <- diff(SIDS,{SID_Proximity_Initialise,SID_Proximity_Deactivated,SID_Proximity_Startup,SID_Proximity_Ready,SID_Proximity_HandleActuationCommands,SID_Proximity_HandleSensorData,SID_Proximity_Cleanup}),
+								y____ <- {SID_Proximity_Initialise,SID_Proximity_Deactivated,SID_Proximity_Startup,SID_Proximity_Ready,SID_Proximity_HandleActuationCommands,SID_Proximity_HandleSensorData,SID_Proximity_Cleanup}
+						|}|]
+					(
+						State_Proximity_Initialise_R(id__)
+							[|inter(CS_Proximity_Initialise_sync,union(union(union(union(union(CS_Proximity_Deactivated_sync,CS_Proximity_Startup_sync),CS_Proximity_Ready_sync),CS_Proximity_HandleActuationCommands_sync),CS_Proximity_HandleSensorData_sync),CS_Proximity_Cleanup_sync))|]
+						(
+							State_Proximity_Deactivated_R(id__)
+								[|inter(CS_Proximity_Deactivated_sync,union(union(union(union(CS_Proximity_Startup_sync,CS_Proximity_Ready_sync),CS_Proximity_HandleActuationCommands_sync),CS_Proximity_HandleSensorData_sync),CS_Proximity_Cleanup_sync))|]
+							(
+								State_Proximity_Startup_R(id__)
+									[|inter(CS_Proximity_Startup_sync,union(union(union(CS_Proximity_Ready_sync,CS_Proximity_HandleActuationCommands_sync),CS_Proximity_HandleSensorData_sync),CS_Proximity_Cleanup_sync))|]
+								(
+									State_Proximity_Ready_R(id__)
+										[|inter(CS_Proximity_Ready_sync,union(union(CS_Proximity_HandleActuationCommands_sync,CS_Proximity_HandleSensorData_sync),CS_Proximity_Cleanup_sync))|]
+									(
+										State_Proximity_HandleActuationCommands_R(id__)
+											[|inter(CS_Proximity_HandleActuationCommands_sync,union(CS_Proximity_HandleSensorData_sync,CS_Proximity_Cleanup_sync))|]
+										(
+											State_Proximity_HandleSensorData_R(id__)
+												[|inter(CS_Proximity_HandleSensorData_sync,CS_Proximity_Cleanup_sync)|]
+											State_Proximity_Cleanup_R(id__)
+										)
+									)
+								)
+							)
+						)
+					)
+				)
+				
+				-- optimized memory process
+				channel getV_PriorityParam: core_nat
+				channel getV_gap: core_int
+				channel getV_PriorityParamInitialised: core_boolean
+				channel getV_gapSenseReceived: core_boolean
+				
+				-- individual memory processes
+				Memory_PriorityParam(x__) = ( 
+					get_PriorityParam!x__ -> Memory_PriorityParam(x__)
+					[]
+					getV_PriorityParam!x__ -> Memory_PriorityParam(x__)
+					[]
+					set_PriorityParam?x__ -> Memory_PriorityParam(x__)
+					[]
+					proximityPriorityParam__!TID_Proximity_InitialiseReceivePriorityParam.in?PriorityParam -> Memory_PriorityParam(PriorityParam)
+					[]
+					proximityPriorityParam__!TID_Proximity_DeactivatedReceivePriorityParam.in?PriorityParam -> Memory_PriorityParam(PriorityParam)
+					[]
+					proximityPriorityParam__!TID_Proximity_ReadyReceivePriorityParam.in?PriorityParam -> Memory_PriorityParam(PriorityParam)
+				)
+				Memory_gap(x__) = ( 
+					get_gap!x__ -> Memory_gap(x__)
+					[]
+					getV_gap!x__ -> Memory_gap(x__)
+					[]
+					set_gap?x__ -> Memory_gap(x__)
+					[]
+					platformProximity__!TID_Proximity_ReadyReceivegap.in?gap -> Memory_gap(gap)
+				)
+				Memory_PriorityParamInitialised(x__) = ( 
+					get_PriorityParamInitialised!x__ -> Memory_PriorityParamInitialised(x__)
+					[]
+					getV_PriorityParamInitialised!x__ -> Memory_PriorityParamInitialised(x__)
+					[]
+					set_PriorityParamInitialised?x__ -> Memory_PriorityParamInitialised(x__)
+				)
+				Memory_gapSenseReceived(x__) = ( 
+					get_gapSenseReceived!x__ -> Memory_gapSenseReceived(x__)
+					[]
+					getV_gapSenseReceived!x__ -> Memory_gapSenseReceived(x__)
+					[]
+					set_gapSenseReceived?x__ -> Memory_gapSenseReceived(x__)
+				)
+				
+				-- processes that read variables and offer transitions
+				MemoryTransitions(id__,
+					 PriorityParam,
+					 gap,
+					 PriorityParamInitialised,
+					 gapSenseReceived) = (
+					internal__!TID_Proximity_InitialToInitialise -> SKIP
+					[]
+					(PriorityParamInitialised)&internal__!TID_Proximity_InitialiseToDeactivated -> SKIP
+					[]
+					activateProximity__!TID_Proximity_DeactivatedToStartup.in -> SKIP
+					[]
+					internal__!TID_Proximity_StartupToReady -> SKIP
+					[]
+					executeProximity__!TID_Proximity_ReadyToHandleActuationCommands.in -> SKIP
+					[]
+					internal__!TID_Proximity_HandleActuationCommandsToHandleSensorData -> SKIP
+					[]
+					((not (gapSenseReceived)))&internal__!TID_Proximity_HandleSensorDataToReady -> SKIP
+					[]
+					deactivateProximity__!TID_Proximity_ReadyToCleanup.in -> SKIP
+					[]
+					internal__!TID_Proximity_CleanupToDeactivated -> SKIP
+					[]
+					platformProximity__!TID_Proximity_ReadyReceivegap.in?gap -> SKIP
+					[]
+					(gapSenseReceived)&internal__!TID_Proximity_HandleSensorDataReceivegap -> SKIP
+					[]
+					proximityPriorityParam__!TID_Proximity_InitialiseReceivePriorityParam.in?PriorityParam -> SKIP
+					[]
+					proximityPriorityParam__!TID_Proximity_DeactivatedReceivePriorityParam.in?PriorityParam -> SKIP
+					[]
+					proximityPriorityParam__!TID_Proximity_ReadyReceivePriorityParam.in?PriorityParam -> SKIP
+					[]
+					((not (gapSenseReceived)))&internal__!TID_Proximity_t0 -> SKIP
+				
+					[]
+						set_PriorityParam?x__ -> SKIP
+					[]
+					set_gap?x__ -> SKIP
+					[]
+					set_PriorityParamInitialised?x__ -> SKIP
+					[]
+					set_gapSenseReceived?x__ -> SKIP
+				 	)
+				MemoryTransitions_Proximity(id__) =
+					(
+					getV_PriorityParam?PriorityParam ->	
+					getV_gap?gap ->	
+					getV_PriorityParamInitialised?PriorityParamInitialised ->	
+					getV_gapSenseReceived?gapSenseReceived ->
+					 MemoryTransitions(id__,
+					 	 PriorityParam,
+					 	 gap,
+					 	 PriorityParamInitialised,
+					 	 gapSenseReceived);
+					 MemoryTransitions_Proximity(id__)
+					)
+				
+				-- synchronisation, hiding and process sets 
+				MemoryVariablesProcesses_Proximity = Union(
+					{
+						{
+							Memory_PriorityParam(0),
+							Memory_gap(0),
+							Memory_PriorityParamInitialised(false),
+							Memory_gapSenseReceived(false)
+						}
+					}
+				)
+				
+				MemoryVariablesSyncSet = Union({
+					{|
+						proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam,
+						proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,
+						getV_gapSenseReceived,
+						proximityPriorityParam__.TID_Proximity_InitialiseReceivePriorityParam,
+						setWC,
+						set_gap,
+						platformProximity__.TID_Proximity_ReadyReceivegap,
+						set_PriorityParam,
+						set_gapSenseReceived,
+						getV_PriorityParam,
+						getV_PriorityParamInitialised,
+						set_PriorityParamInitialised,
+						getV_gap
+					|}	
+				})
+				
+				MemoryVariablesHideSet = Union({
+					{|
+						getV_gapSenseReceived,
+						getV_PriorityParam,
+						getV_PriorityParamInitialised,
+						getWC,
+						getV_gap
+					|}
+				})
+				
+				-- combined individual memory processes
+				MemoryVariables = ||| P : MemoryVariablesProcesses_Proximity @ P
+				
+				-- complete memory process
+				MemoryN(id__) = (MemoryVariables [| MemoryVariablesSyncSet |] MemoryTransitions_Proximity(id__)) \ MemoryVariablesHideSet
+				
+				-- optimised memory
+				-- Sets of named elements identified according to transition conditions:
+				-- {}
+				-- {PriorityParamInitialised}
+				-- {gapSenseReceived}
+				-- Summary of all identified named elements:
+				-- {
+				-- PriorityParamInitialised
+				-- gapSenseReceived
+				-- gap
+				-- PriorityParam
+				-- }
+				
+				-- Allocation plan:
+				-- 0:{}
+				--	=> {
+				--		TID_Proximity_CleanupToDeactivated,
+				--		TID_Proximity_DeactivatedReceivePriorityParam,
+				--		TID_Proximity_ReadyToCleanup,
+				--		TID_Proximity_ReadyReceivegap,
+				--		TID_Proximity_ReadyReceivePriorityParam,
+				--		TID_Proximity_ReadyToHandleActuationCommands,
+				--		TID_Proximity_InitialToInitialise,
+				--		TID_Proximity_DeactivatedToStartup,
+				--		TID_Proximity_InitialiseReceivePriorityParam,
+				--		TID_Proximity_StartupToReady,
+				--		TID_Proximity_HandleActuationCommandsToHandleSensorData}
+				-- 1:{PriorityParamInitialised}
+				--	=> {
+				--		TID_Proximity_InitialiseToDeactivated}
+				-- 2:{gapSenseReceived}
+				--	=> {
+				--		TID_Proximity_HandleSensorDataReceivegap,
+				--		TID_Proximity_t0,
+				--		TID_Proximity_HandleSensorDataToReady}
+				
+				-- Memory transition processes
+				MemoryTransitions_opt_0(id__) =
+				(
+					let
+						Update = Current(id__)
+						Current(id__)
+						 	   = 
+						 	   internal__!TID_Proximity_CleanupToDeactivated -> Update
+						 	   []
+						 	   proximityPriorityParam__!TID_Proximity_DeactivatedReceivePriorityParam.in?PriorityParam -> Update
+						 	   []
+						 	   deactivateProximity__!TID_Proximity_ReadyToCleanup.in -> Update
+						 	   []
+						 	   platformProximity__!TID_Proximity_ReadyReceivegap.in?gap -> Update
+						 	   []
+						 	   proximityPriorityParam__!TID_Proximity_ReadyReceivePriorityParam.in?PriorityParam -> Update
+						 	   []
+						 	   executeProximity__!TID_Proximity_ReadyToHandleActuationCommands.in -> Update
+						 	   []
+						 	   internal__!TID_Proximity_InitialToInitialise -> Update
+						 	   []
+						 	   activateProximity__!TID_Proximity_DeactivatedToStartup.in -> Update
+						 	   []
+						 	   proximityPriorityParam__!TID_Proximity_InitialiseReceivePriorityParam.in?PriorityParam -> Update
+						 	   []
+						 	   internal__!TID_Proximity_StartupToReady -> Update
+						 	   []
+						 	   internal__!TID_Proximity_HandleActuationCommandsToHandleSensorData -> Update
+					within
+						Update
+				)
+				MemoryTransitions_opt_1(id__) =
+				(
+					let
+						Update = 
+						get_PriorityParamInitialised?PriorityParamInitialised ->
+						Current(id__,
+							 PriorityParamInitialised)
+						Current(id__,
+							 PriorityParamInitialised)
+						 	   = 
+						 	   (PriorityParamInitialised)&(internal__!TID_Proximity_InitialiseToDeactivated -> Update)
+						 	   	 
+						 	   	 []
+						 	   	 set_PriorityParamInitialised?x__ -> Update
+					within
+						Update
+				)
+				MemoryTransitions_opt_2(id__) =
+				(
+					let
+						Update = 
+						get_gapSenseReceived?gapSenseReceived ->
+						Current(id__,
+							 gapSenseReceived)
+						Current(id__,
+							 gapSenseReceived)
+						 	   = 
+						 	   (gapSenseReceived)&(internal__!TID_Proximity_HandleSensorDataReceivegap -> Update)
+						 	   []
+						 	   ((not (gapSenseReceived)))&(internal__!TID_Proximity_t0 -> Update)
+						 	   []
+						 	   ((not (gapSenseReceived)))&(internal__!TID_Proximity_HandleSensorDataToReady -> Update)
+						 	   	 
+						 	   	 []
+						 	   	 set_gapSenseReceived?x__ -> Update
+					within
+						Update
+				)
+				
+				-- Memory cell processes
+				Memory_opt_PriorityParamInitialised(x__) = ( 
+					get_PriorityParamInitialised!x__ -> Memory_opt_PriorityParamInitialised(x__)
+					[]
+					set_PriorityParamInitialised?x__ -> Memory_opt_PriorityParamInitialised(x__)
+				)
+				Memory_opt_gapSenseReceived(x__) = ( 
+					get_gapSenseReceived!x__ -> Memory_opt_gapSenseReceived(x__)
+					[]
+					set_gapSenseReceived?x__ -> Memory_opt_gapSenseReceived(x__)
+				)
+				Memory_opt_gap(x__) = ( 
+					get_gap!x__ -> Memory_opt_gap(x__)
+					[]
+					set_gap?x__ -> Memory_opt_gap(x__)
+				)
+				Memory_opt_PriorityParam(x__) = ( 
+					get_PriorityParam!x__ -> Memory_opt_PriorityParam(x__)
+					[]
+					set_PriorityParam?x__ -> Memory_opt_PriorityParam(x__)
+				)
+				
+				-- Composition of memory, StateMachine and Memory transition processes
+				
+				MemorySTM_opt(id__) =
+					dbisim(
+					  sbisim(Memory_opt_PriorityParamInitialised(false)
+					      	[| {|get_PriorityParamInitialised,set_PriorityParamInitialised|} |] 
+					      	sbisim(	
+					      	  dbisim(
+					      	    sbisim(dbisim(
+					      	      sbisim(Memory_opt_gapSenseReceived(false)
+					      	          	[| {|set_gapSenseReceived,get_gapSenseReceived|} |] 
+					      	          	sbisim(	
+					      	          	  dbisim(
+					      	          	    sbisim(sbisim(	
+					      	          	      dbisim(
+					      	          	        sbisim(dbisim(sbisim(Memory_opt_gap(0)
+					      	          	              	[| {|get_gap,set_gap|} |] 
+					      	          	              	dbisim(sbisim(Memory_opt_PriorityParam(0)
+					      	          	              	      	[| {|set_PriorityParam,get_PriorityParam|} |] 
+					      	          	              	      	STM_core(id__)
+					      	          	              	      	)\ {|set_PriorityParam,get_PriorityParam|}
+					      	          	              	      )
+					      	          	              	)\ {|get_gap,set_gap|}
+					      	          	              )
+					      	          	          	  [| {|proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam,proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,activateProximity__.TID_Proximity_DeactivatedToStartup,internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,executeProximity__.TID_Proximity_ReadyToHandleActuationCommands,proximityPriorityParam__.TID_Proximity_InitialiseReceivePriorityParam,internal__.TID_Proximity_CleanupToDeactivated,internal__.TID_Proximity_StartupToReady,platformProximity__.TID_Proximity_ReadyReceivegap,deactivateProximity__.TID_Proximity_ReadyToCleanup,internal__.TID_Proximity_InitialToInitialise|} |]
+					      	          	          	  MemoryTransitions_opt_0(id__)
+					      	          	          	  )\{|internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,internal__.TID_Proximity_CleanupToDeactivated,internal__.TID_Proximity_StartupToReady,internal__.TID_Proximity_InitialToInitialise|})
+					      	          	          )
+					      	          	      	  [| {|set_gapSenseReceived,internal__.TID_Proximity_HandleSensorDataReceivegap,internal__.TID_Proximity_t0,internal__.TID_Proximity_HandleSensorDataToReady|} |]
+					      	          	      	  MemoryTransitions_opt_2(id__)
+					      	          	      	  )\{|internal__.TID_Proximity_HandleSensorDataReceivegap,internal__.TID_Proximity_t0,internal__.TID_Proximity_HandleSensorDataToReady|})
+					      	          	      )
+					      	          	) \ {|set_gapSenseReceived,get_gapSenseReceived|}
+					      	          )
+					      	      	  [| {|internal__.TID_Proximity_InitialiseToDeactivated,set_PriorityParamInitialised|} |]
+					      	      	  MemoryTransitions_opt_1(id__)
+					      	      	  )\{|internal__.TID_Proximity_InitialiseToDeactivated|})
+					      	      )
+					      	) \ {|get_PriorityParamInitialised,set_PriorityParamInitialised|}
+					      )
+				
+				-- main process
+				
+				MachineMemorySyncSet = Union({
+					union(
+						union(
+							{|get_PriorityParam,set_PriorityParam,
+							get_gap,set_gap,
+							get_PriorityParamInitialised,set_PriorityParamInitialised,
+							get_gapSenseReceived,set_gapSenseReceived|},
+							{||}
+						)
+							
+						,
+						{|internal__.TID_Proximity_InitialToInitialise,
+						internal__.TID_Proximity_InitialiseToDeactivated,
+						activateProximity__.TID_Proximity_DeactivatedToStartup,
+						internal__.TID_Proximity_StartupToReady,
+						executeProximity__.TID_Proximity_ReadyToHandleActuationCommands,
+						internal__.TID_Proximity_HandleActuationCommandsToHandleSensorData,
+						internal__.TID_Proximity_HandleSensorDataToReady,
+						deactivateProximity__.TID_Proximity_ReadyToCleanup,
+						internal__.TID_Proximity_CleanupToDeactivated,
+						platformProximity__.TID_Proximity_ReadyReceivegap,
+						internal__.TID_Proximity_HandleSensorDataReceivegap,
+						proximityPriorityParam__.TID_Proximity_InitialiseReceivePriorityParam,
+						proximityPriorityParam__.TID_Proximity_DeactivatedReceivePriorityParam,
+						proximityPriorityParam__.TID_Proximity_ReadyReceivePriorityParam,
+						internal__.TID_Proximity_t0|}
+					),
+					{|deadline|},
+					WCresets
+				})
+				
+				MachineMemoryHidingSet = Union({
+					union(
+						{|get_PriorityParam,set_PriorityParam,
+						get_gap,set_gap,
+						get_PriorityParamInitialised,set_PriorityParamInitialised,
+						get_gapSenseReceived,set_gapSenseReceived|},
+						{||}
+					)
+					,
+					{|deadline|}
+				})
+				
+				MachineInternalEvents = {|
+					internal__
+				|}
+			
+				-- main process
+				AUX(id__) = prioritise((((
+					wbisim(STM(id__))
+						[|MachineMemorySyncSet|]
+					(
+						(MemoryN(id__))
+							[| union(WCsets,WCsync) |]
+						Clocks(id__)
+					)\WCsets
+				)
+				[[
+					platformProximity__.x____ <- platformProximity,
+					activateProximity__.x____ <- activateProximity,
+					deactivateProximity__.x____ <- deactivateProximity,
+					executeProximity__.x____ <- executeProximity,
+					proximityPriorityParam__.x____ <- proximityPriorityParam,
+					proximityGap__.x____ <- proximityGap,
+					completeProximity__.x____ <- completeProximity
+					| x____ <- TIDS
+				]]
+				\MachineMemoryHidingSet)
+				[|{|terminate|}|>SKIP\MachineInternalEvents)
+				,<Union({internal_events, ClockResets, {|terminate|}}),{tock}>)
+				
+				STM_core(id__) = 
+					dbisim(
+						sbisim(
+								(STM(id__)
+								[| union(WCsync,WCresets) |]
+								Clocks(id__))\WCresets
+							  )
+						  )
+				
+				AUX_opt(id__) = 
+					prioritise(
+						(MemorySTM_opt(id__)
+						)[[
+							platformProximity__.x____ <- platformProximity,
+							activateProximity__.x____ <- activateProximity,
+							deactivateProximity__.x____ <- deactivateProximity,
+							executeProximity__.x____ <- executeProximity,
+							proximityPriorityParam__.x____ <- proximityPriorityParam,
+							proximityGap__.x____ <- proximityGap,
+							completeProximity__.x____ <- completeProximity
+							| x____ <- TIDS
+						]]
+					[|{|terminate|}|>SKIP\MachineInternalEvents
+					,<Union({internal_events, ClockResets, {|terminate|}}),{tock}>)
+				
+				internal_(id__) = prioritise((((
+					wbisim(STM(id__))
+						[|MachineMemorySyncSet|]
+					((MemoryN(id__)) [| union(WCsets,WCsync) |] Clocks(id__))\WCsets
+				)
+				\MachineMemoryHidingSet)
+				[|{|terminate|}|>SKIP)
+				,<Union({internal_events, ClockResets, {|internal__,terminate|}}),{tock}>)		
+				-- declare clocks
+				datatype ClockSet = dummyC
+				channel clockReset 				-- no clocks declared
+				
+				-- declare trigger deadlines channel
+				channel deadline : TIDS.Signal
+				
+				-- compile clocks process
+				
+				-- set of strings that uniquely identify the waiting conditions, each of which is 
+				-- used to synchronise with the Memory process to set the correspoding variable in
+				-- the memory process.
+				datatype setWC_identifierSet = dummyWC
+				
+				-- declaring getWC and setWC channel for updating memory variables related to clocks
+				channel setWC : setWC_identifierSet.Bool
+				channel getWC : setWC_identifierSet.Bool
+				
+				-- Set of pairs capturing waiting condition processes and their alphabet.
+				-- It includes the corresponding set of the defined operations.
+				WCset(id__) = Union({
+					{
+					}
+					})
+				
+				-- Auxiliary function to rename the channel set for required clocks.
+				
+				-- Set of transition events for which synchronisation is required between Clocks and the Memory process.
+				-- It includes the corresponding set of the defined operations.
+				WCsync = Union({
+					{||}
+					})
+				-- Set of all clock resets, including 'clockReset.C' events and 'entered.x.y' events where x is drawn
+				-- from the set of all state machine state identifiers. It includes the corresponding set of the defined operations.
+				WCresets = Union({
+					{| | x <- SIDS |}
+					})
+				-- Set of all waiting condition set events. It includes the corresponding set of the defined operations.
+				WCsets = Union({
+					{|setWC|}
+					})
+				
+				
+				
+				-- Clocks process
+				Clocks(id__) = || (alpha, P) : WCset(id__) @ [alpha] wbisim(P)
+
+				-- collects all clockResets including those of operations
+				ClockResets = Union({
+					{|clockReset|}
+									})
+				
+				-- With no internal events visible
+				Dunopt__(id__) = timed_priority(AUX(id__) \ union(internal_events,ClockResets))
+				
+				D__(id__) = timed_priority(AUX_opt(id__) \ union(internal_events,ClockResets))
+				
+				O__(id__) = D__(id__)
+				
+				-- With enter/entered/exit/exited events visible
+				FVS__(id__) = timed_priority(AUX(id__) \ ClockResets)
+				
+				-- With enterV/enteredV/exitV/exitedV events visible
+				VS__(id__) = ShowV(timed_priority(AUX(id__) \ ClockResets))
+				
+				-- With clock resets visible
+				FVS_C__(id__) = AUX(id__)
+			}
+		endmodule

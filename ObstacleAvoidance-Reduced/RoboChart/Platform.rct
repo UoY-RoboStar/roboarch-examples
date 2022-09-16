@@ -1,0 +1,16 @@
+package Platform
+
+import Types::* 
+
+
+
+
+
+
+
+ robotic platform PuckRobot {
+	
+	
+	uses Motors
+	}
+

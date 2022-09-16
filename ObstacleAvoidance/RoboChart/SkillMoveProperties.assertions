@@ -1,0 +1,113 @@
+csp MoveSkillEvents csp-begin
+	
+	skillControlEvents = { 
+		Control_DSkill_Move::Move::activateMove.in, Control_DSkill_Move::Move::deactivateMove.in, 
+		Control_DSkill_Move::Move::executeMove.in, Control_DSkill_Move::Move::completeMove.out
+	}
+	
+	skillParameterEvents = {|Control_DSkill_Move::Move::movePriorityParam.in|}
+	
+	skillActuationCommandEvents = {|Control_DSkill_Move::Move::moveVIn.in|}
+		
+	skillSensorDataEvents = {}
+	
+	
+	skillPlatformSensingEvents = {}
+		
+	skillPlatformActuationEvents = {|Control_DSkill_Move::Move::platformMove.out|}
+	
+
+	allSkillEvents = Union({ skillControlEvents, skillParameterEvents, skillActuationCommandEvents, skillSensorDataEvents, skillPlatformActuationEvents, skillPlatformSensingEvents })
+	
+csp-end
+
+csp EBDS1 csp-begin
+
+	EBDS1 = let	
+		PRE = |~| ev: diff( allSkillEvents, { Control_DSkill_Move::Move::executeMove.in }) @ ev -> PRE
+			  |~| Control_DSkill_Move::Move::executeMove.in -> CON
+			  
+	    CON = |~| ev: union(skillPlatformActuationEvents, skillSensorDataEvents) @ ev -> CON
+		      |~|
+		      Control_DSkill_Move::Move::completeMove.out -> POS
+		    
+		POS = CHAOS( allSkillEvents )
+		     
+	within PRE
+csp-end
+
+csp EBDS2 csp-begin 
+	EBDS2 = let
+		PRE = |~| ev: diff(allSkillEvents, { Control_DSkill_Move::Move::activateMove.in, Control_DSkill_Move::Move::completeMove.out }  ) @
+					ev -> PRE
+		      |~| 
+		      Control_DSkill_Move::Move::activateMove.in -> PRE'(<>)
+		      |~|
+		      Control_DSkill_Move::Move::completeMove.out -> PRE'(<>) 
+		
+		PRE'(ac1) = |~| ev: union(skillParameterEvents , skillPlatformSensingEvents) @
+		                              ev -> PRE'(ac1)
+		            |~| 
+		            Control_DSkill_Move::Move::moveVIn.in? ac -> PRE'(<ac>)
+					|~| 
+					Control_DSkill_Move::Move::executeMove.in -> CON(ac1)
+					|~|
+					Control_DSkill_Move::Move::deactivateMove.in -> POS
+		
+		CON(ac1) = OUT1(ac1); POS
+		
+		OUT1(ac1) = if (ac1 != <>) then 
+					   Control_DSkill_Move::Move::platformMove.out!head(ac1) -> SKIP
+					else
+					   SKIP
+		
+		POS = CHAOS( allSkillEvents )
+		
+	
+	within PRE
+
+csp-end
+
+
+csp EBDS4 csp-begin 
+	EBDS4 = let
+		
+		PRE = |~| ev: diff(allSkillEvents, { Control_DSkill_Move::Move::activateMove.in, Control_DSkill_Move::Move::completeMove.out } ) @
+		     		ev -> PRE
+		      |~|
+		      Control_DSkill_Move::Move::activateMove.in -> PRE'
+		      |~|
+		      Control_DSkill_Move::Move::completeMove.out -> PRE'
+		     
+	    PRE' = |~| ev: union(skillParameterEvents, skillPlatformSensingEvents) @
+	    			ev -> PRE'
+	    	   [] 
+	    	   Control_DSkill_Move::Move::executeMove.in -> CON
+	    	   []
+	    	   [] ev: skillActuationCommandEvents @ ev -> POS
+	    	   []
+	    	   Control_DSkill_Move::Move::deactivateMove.in -> POS
+	    
+	    CON = --|~| ev: skillSensorDataEvents @ ev -> CON
+	     	  --|~|
+	     	  Control_DSkill_Move::Move::completeMove.out -> POS
+	     	  
+	   POS = CHAOS(allSkillEvents)
+	    	   
+	within PRE 
+	
+csp-end
+
+
+
+assertion EBDS1: Control::DSkill::Move::Move refines EBDS1 in the failures model
+
+assertion EBDS2: Control::DSkill::Move::Move refines EBDS2 in the failures model
+
+// EBDS3 - not applicable to Move as it receives no sensor values from the platform.
+
+assertion EBDS4: Control::DSkill::Move::Move refines EBDS4 in the failures model
+// EBDS4 not currently enforced by the skill but expected communication by the skill manager.  
+
+// EBDS5 - not applicable to Move as it receives no sensor values from the platform.
+

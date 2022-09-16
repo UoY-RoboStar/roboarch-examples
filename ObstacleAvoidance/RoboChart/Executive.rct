@@ -1,0 +1,95 @@
+package Executive
+
+import Types::* controller Executive {
+	
+	uses IControl
+	
+	stm Simple {
+		uses IControl
+	
+		initial i0
+		
+		state InitialiseSkills {
+			entry setProximityPriorityParameter ! 0 ; setExplorePriorityParameter ! 0 ; setMovePriorityParameter ! 0 ; setExploreSafetyDistanceParameter ! 1 ; setExploreMaxSpeedParameter ! 2 ; activate ! Skills :: PROXIMITY ; activate ! Skills :: EXPLORE ; activate ! Skills :: MOVE  
+		}
+		
+		transition t0 {
+			from i0
+			to InitialiseSkills
+		}
+	var currentlyActiveSkills : Set( Skills ) = { } , monitor : Events
+		const EXECUTIVE_CYCLE_TIME : int = 2
+		state InitialiseMonitors {
+			entry initiateEventMonitor ! Events :: SAFETYDISTANCEREACHED
+		}
+		state Exploring {
+		}
+		state CheckMonitor {
+		}
+		state WaitForAllSkills {
+		}
+		transition t1 { 
+			from WaitForAllSkills
+			to InitialiseMonitors
+			condition currentlyActiveSkills == { Skills :: PROXIMITY , Skills :: EXPLORE , Skills :: MOVE } 
+		}
+		transition t2 {
+			from InitialiseMonitors
+			to Exploring
+		}
+		transition t3 {
+			from WaitForAllSkills
+			to WaitForAllSkills
+			trigger 
+			activeSkills ? currentlyActiveSkills
+		}
+		transition t4 {
+			from Exploring
+			to CheckMonitor
+			condition sinceEntry ( WaitForAllSkills ) >= EXECUTIVE_CYCLE_TIME
+		}
+		transition t5 {
+			from CheckMonitor
+			to Exploring
+		trigger eventReply ? monitor
+		}
+		transition t6 {
+			from InitialiseSkills
+			to WaitForAllSkills
+		}
+	transition t7 {
+			from WaitForAllSkills
+			to WaitForAllSkills
+			condition sinceEntry ( WaitForAllSkills ) >= EXECUTIVE_CYCLE_TIME
+			action getActiveSkills
+		}
+	}
+
+	connection Simple on getActiveSkills to Executive on getActiveSkills
+	connection Executive on activeSkills to Simple on activeSkills
+	connection Executive on eventReply to Simple on eventReply
+	connection Simple on deactivate to Executive on deactivate
+	connection Simple on activate to Executive on activate
+	connection Simple on stopEventMonitor to Executive on stopEventMonitor
+	connection Simple on initiateEventMonitor to Executive on initiateEventMonitor
+	connection Executive on movePriorityParameter to Simple on movePriorityParameter
+	connection Executive on proximityPriorityParameter to Simple on proximityPriorityParameter
+	connection Executive on exploreSafetyDistanceParameter to Simple on exploreSafetyDistanceParameter
+	connection Simple on getExplorePriorityParameter to Executive on getExplorePriorityParameter
+	connection Executive on exploreVOutValue to Simple on exploreVOutValue
+	connection Executive on proximityGapValue to Simple on proximityGapValue
+	connection Executive on exploreMaxSpeedParameter to Simple on exploreMaxSpeedParameter
+	connection Executive on explorePriorityParameter to Simple on explorePriorityParameter
+	connection Simple on getExploreSafetyDistanceParameter to Executive on getExploreSafetyDistanceParameter
+	connection Simple on getProximityGapValue to Executive on getProximityGapValue
+	connection Simple on setMovePriorityParameter to Executive on setMovePriorityParameter
+	connection Simple on getProximityPriorityParameter to Executive on getProximityPriorityParameter
+	connection Simple on getExploreVOutValue to Executive on getExploreVOutValue
+	connection Simple on setExploreMaxSpeedParameter to Executive on setExploreMaxSpeedParameter
+	connection Simple on setProximityPriorityParameter to Executive on setProximityPriorityParameter
+	connection Simple on getMovePriorityParameter to Executive on getMovePriorityParameter
+	connection Simple on setExploreSafetyDistanceParameter to Executive on setExploreSafetyDistanceParameter
+	connection Simple on setExplorePriorityParameter to Executive on setExplorePriorityParameter
+	connection Simple on getExploreMaxSpeedParameter to Executive on getExploreMaxSpeedParameter
+}
+

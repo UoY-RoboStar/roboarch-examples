@@ -1,0 +1,72 @@
+-- generate --
+
+-- MODULE CONSTANTS
+
+-- CONTROLLER CONSTANTS
+
+-- STATEMACHINE CONSTANTS
+
+-- generate const_Control_Control_Explore_ZERO_SPEED
+const_Control_Control_Explore_ZERO_SPEED = (0,0)
+
+-- generate nat
+nametype core_nat = {0..1}
+
+-- generate string
+nametype core_string = LSeq(Char,1)
+
+-- not generate Types_UpdateValue
+PriorityType_value( (x, priority) ) = x
+PriorityType_priority( (x, priority) ) = priority
+Types_UpdateValue(value,newValue) =  (PriorityType_priority(newValue) >= PriorityType_priority(value))
+
+-- generate const_Control_CSkill_Explore_Explore_ZERO_SPEED
+const_Control_CSkill_Explore_Explore_ZERO_SPEED = (0,0)
+
+-- generate const_Control_Control_SkillsManager_REQUEST_HANDLING_DELAY
+const_Control_Control_SkillsManager_REQUEST_HANDLING_DELAY = 1
+
+-- OPERATION CONSTANTS
+
+-- BASIC TYPES
+
+-- generate real
+nametype core_real = { -1..1}
+
+-- BASIC FUNCTIONS
+
+-- generate int
+nametype core_int = { -1..1}
+
+-- generate -- OPERATION BOUNDS
+
+-- MODULE CONSTANTS
+
+-- CONTROLLER CONSTANTS
+
+-- STATEMACHINE CONSTANTS
+
+-- generate Div
+Div(e1,e2,T) = if member(e1/e2,T) then e1/e2 else e1
+
+-- generate Neg
+Neg(e1,T) = if member(-e1,T) then -e1 else e1
+
+-- generate boolean
+nametype core_boolean = Bool
+
+-- generate const_Control_SkillsManager_SkillsManager_REQUEST_HANDLING_DELAY
+const_Control_SkillsManager_SkillsManager_REQUEST_HANDLING_DELAY = 1
+
+-- generate Mult
+Mult(e1,e2,T) = if member(e1*e2,T) then e1*e2 else e1
+
+-- generate Modulus
+Modulus(e1,e2,T) = if member(e1%e2,T) then e1%e2 else e1
+
+-- generate Plus
+Plus(e1,e2,T) = if member(e1+e2,T) then e1+e2 else e1
+
+-- generate Minus
+Minus(e1,e2,T) = if member(e1-e2,T) then e1-e2 else e1
+

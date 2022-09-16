@@ -1,0 +1,69 @@
+include "function_toolkit_defs.csp"
+include "relation_toolkit_defs.csp"
+include "Control_SkillsManager_defs.csp"
+include "core_defs.csp"
+include "Control_DSkill_Move_defs.csp"
+include "Types_defs.csp"
+include "../instantiations.csp"
+include "set_toolkit_defs.csp"
+include "Platform_defs.csp"
+include "Executive_defs.csp"
+include "sequence_toolkit_defs.csp"
+include "ObstacleAvoidance_ObstacleAvoidance.csp"
+include "Control_CSkill_Explore_defs.csp"
+include "ObstacleAvoidance_defs.csp"
+include "Control_defs.csp"
+include "robochart_defs.csp"
+channel r__
+-- generate ObstacleAvoidance_ObstacleAvoidance
+P_ObstacleAvoidance_ObstacleAvoidance = let
+	id__ = 0
+	
+	
+	
+	const_Control_Control_Explore_ZERO_SPEED = const_Control_CSkill_Explore_Explore_ZERO_SPEED
+	const_Control_Control_SkillsManager_REQUEST_HANDLING_DELAY = const_Control_SkillsManager_SkillsManager_REQUEST_HANDLING_DELAY
+	const_Control_Control_SkillsManager_ASYNCHRONOUS_SKILLS = <Types_Skills_EXPLORE>
+	const_Control_Control_SkillsManager_MAX_SEQ_LENGTH = 2
+	const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME = 2
+		
+	
+within
+	ObstacleAvoidance_ObstacleAvoidance::O__(id__,
+			    const_Control_Control_Explore_ZERO_SPEED,
+			    const_Control_Control_SkillsManager_REQUEST_HANDLING_DELAY,
+			    const_Control_Control_SkillsManager_ASYNCHRONOUS_SKILLS,
+			    const_Control_Control_SkillsManager_MAX_SEQ_LENGTH,
+			    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+assert P_ObstacleAvoidance_ObstacleAvoidance :[deadlock-free]	
+assert P_ObstacleAvoidance_ObstacleAvoidance;RUN({r__}) :[deadlock-free]
+assert P_ObstacleAvoidance_ObstacleAvoidance :[deterministic]
+assert P_ObstacleAvoidance_ObstacleAvoidance :[divergence-free]
+
+-- generate ObstacleAvoidance_ObstacleAvoidance_Control
+P_ObstacleAvoidance_ObstacleAvoidance_Control = let
+	id__ = 0
+within
+	ObstacleAvoidance_ObstacleAvoidance::Control::O__(id__,
+			    const_Control_Control_Explore_ZERO_SPEED,
+			    const_Control_Control_SkillsManager_REQUEST_HANDLING_DELAY,
+			    const_Control_Control_SkillsManager_ASYNCHRONOUS_SKILLS,
+			    const_Control_Control_SkillsManager_MAX_SEQ_LENGTH)
+
+assert P_ObstacleAvoidance_ObstacleAvoidance_Control :[deadlock-free]	
+assert P_ObstacleAvoidance_ObstacleAvoidance_Control;RUN({r__}) :[deadlock-free]
+assert P_ObstacleAvoidance_ObstacleAvoidance_Control :[deterministic]
+assert P_ObstacleAvoidance_ObstacleAvoidance_Control :[divergence-free]
+
+-- generate ObstacleAvoidance_ObstacleAvoidance_ctrl_ref0
+P_ObstacleAvoidance_ObstacleAvoidance_ctrl_ref0 = let
+	id__ = 0
+within
+	ObstacleAvoidance_ObstacleAvoidance::ctrl_ref0::O__(id__,
+			    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+
+assert P_ObstacleAvoidance_ObstacleAvoidance_ctrl_ref0 :[deadlock-free]	
+assert P_ObstacleAvoidance_ObstacleAvoidance_ctrl_ref0;RUN({r__}) :[deadlock-free]
+assert P_ObstacleAvoidance_ObstacleAvoidance_ctrl_ref0 :[deterministic]
+assert P_ObstacleAvoidance_ObstacleAvoidance_ctrl_ref0 :[divergence-free]
+

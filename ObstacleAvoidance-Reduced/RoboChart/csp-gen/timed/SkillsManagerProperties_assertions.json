@@ -1,0 +1,19 @@
+[
+{ "name": "Control_SkillsManager::SkillsManager refines EBSM1 (EBSM1) [failures model]",
+  "type": "refines",
+  "negated": false
+},
+{ "name": "Control_SkillsManager::SkillsManager refines EBSM2_ExplorePriority (EBSM2_ExplorePriority) [failures model]",
+  "type": "refines",
+  "negated": false
+},
+{ "name": "Control_SkillsManager::SkillsManager refines EBSM3_ExplorePriority (EBSM3_ExplorePriority) [failures model]",
+  "type": "refines",
+  "negated": false
+},
+{ "name": "Control_SkillsManager::SkillsManager refines EBSM4 (EBSM4) [failures model]",
+  "type": "refines",
+  "negated": false
+}
+
+]

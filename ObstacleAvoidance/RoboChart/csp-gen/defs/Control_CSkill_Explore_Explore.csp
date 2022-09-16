@@ -1,0 +1,1645 @@
+module Control_CSkill_Explore_Explore
+exports
+	-- flow channels
+	channel internal__ : TIDS
+	channel enteredV, enterV, exitV, exitedV : SIDS
+	channel enter, entered: SIDS.SIDS
+	channel exit,exited: SIDS.SIDS
+	channel terminate
+	
+	-- variable channels
+	channel get_maxSpeedParam, set_maxSpeedParam: core_real
+	channel get_safetyDistanceParam, set_safetyDistanceParam: core_int
+	channel get_PriorityParam, set_PriorityParam: core_nat
+	channel get_obstacleDistance, set_obstacleDistance: core_int
+	channel get_vOut, set_vOut: Types_Velocities
+	channel get_PriorityParamInitialised, set_PriorityParamInitialised: core_boolean
+	channel get_maxSpeedParamInitialised, set_maxSpeedParamInitialised: core_boolean
+	channel get_safetyDistanceParamInitialised, set_safetyDistanceParamInitialised: core_boolean
+	channel get_nextMotorsVelocity, set_nextMotorsVelocity: Types_Velocities
+			
+	-- shared variable channels
+	
+	-- local variable channels for defined operations that are required by the state machine
+	
+	-- declaring state machine events
+	channel activateExplore__: TIDS.InOut
+	channel activateExplore: InOut
+	channel deactivateExplore__: TIDS.InOut
+	channel deactivateExplore: InOut
+	channel executeExplore__: TIDS.InOut
+	channel executeExplore: InOut
+	channel exploreMaxSpeedParam__: TIDS.InOut.core_real
+	channel exploreMaxSpeedParam: InOut.core_real
+	channel exploreSafetyDistanceParam__: TIDS.InOut.core_int
+	channel exploreSafetyDistanceParam: InOut.core_int
+	channel explorePriorityParam__: TIDS.InOut.core_nat
+	channel explorePriorityParam: InOut.core_nat
+	channel exploreObstacleDistance__: TIDS.InOut.core_int
+	channel exploreObstacleDistance: InOut.core_int
+	channel exploreVOut__: TIDS.InOut.{(x0__,x1__) | x0__ <- Types_Velocities,x1__ <- core_nat}
+	channel exploreVOut: InOut.{(x0__,x1__) | x0__ <- Types_Velocities,x1__ <- core_nat}
+	channel completeExplore__: TIDS.InOut
+	channel completeExplore: InOut
+	
+	-- declaring call and ret events for undefined operations
+	
+	-- Only the undefined operations are declared here.
+	-- If the state machine is in isolation, all required operations will be undefined.
+	-- If it is in the context of a controller, the required operations not provided by the
+	-- controller will be declared here, and the defined operations will be defined in the
+	-- context of the Controller module, and therefore within scope of the state machien module.
+	
+	
+	-- definition of functions used to expose flow channels
+	ShowEvents(P,E) = P[[ entered.x____.y____ <- enteredV.y____ | entered.x____.y____ <- E]]
+					   [[ enter.x____.y____ <- enterV.y____ | enter.x____.y____ <- E]]
+					   [[ exit.x____.y____ <- exitV.y____ | exit.x____.y____ <- E]]
+					   [[ exited.x____.y____ <- exitedV.y____ | exited.x____.y____ <- E ]]
+						 
+	ShowEnteredV(P) = P[[ entered.x____.y____ <- enteredV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+	ShowEnterV(P) = P[[ enter.x____.y____ <- enterV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+	ShowExitV(P) = P[[ exit.x____.y____ <- exitV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+	ShowExitedV(P) = P[[ exited.x____.y____ <- exitedV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+	ShowV(P) = P[[ entered.x____.y____ <- enteredV.y____ | x____ <- SIDS, y____ <- SIDS]]
+				[[ enter.x____.y____ <- enterV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+				[[ exit.x____.y____ <- exitV.y____ | x____ <- SIDS, y____ <- SIDS]]
+				[[ exited.x____.y____ <- exitedV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+	
+	-- declaring identifiers of state and final states
+	datatype SIDS = SID_Explore
+	              | SID_Explore_Initialise
+	              | SID_Explore_Deactivated
+	              | SID_Explore_Startup
+	              | SID_Explore_Ready
+	              | SID_Explore_ComputeOutputs
+	              | SID_Explore_Cleanup
+	
+	-- declaring identifiers of transitions
+	datatype TIDS = NULLTRANSITION__
+	              | TID_Explore_InitialToInitialise
+	              | TID_Explore_InitialiseToDeactivated
+	              | TID_Explore_DeactivatedToStartup
+	              | TID_Explore_StartupToReady
+	              | TID_Explore_ReadyToComputeoutputs
+	              | TID_Explore_ComputeoutputsToReady
+	              | TID_Explore_ReadyToCleanup
+	              | TID_Explore_CleanupToDeactivated
+	              | TID_Explore_ReadyReceiveobstacleDistance
+	              | TID_Explore_InitialiseReceivemaxSpeedParam
+	              | TID_Explore_DeactivatedReceivemaxSpeedParam
+	              | TID_Explore_ReadyReceivemaxSpeedParam
+	              | TID_Explore_InitialiseReceivesafetyDistanceParam
+	              | TID_Explore_DeactivatedReceivesafetyDistanceParam
+	              | TID_Explore_ReadyReceivesafetyDistanceParam
+	              | TID_Explore_InitialiseReceivePriorityParam
+	              | TID_Explore_DeactivatedReceivePriorityParam
+	              | TID_Explore_ReadyReceivePriorityParam
+	
+	-- declaring identifiers of transitions that can interupt a state (excludes transitions from junctions)
+	
+	ITIDS = {
+		TID_Explore_InitialiseToDeactivated,	TID_Explore_DeactivatedToStartup,	TID_Explore_StartupToReady,	TID_Explore_ReadyToComputeoutputs,	TID_Explore_ComputeoutputsToReady,	TID_Explore_ReadyToCleanup,	TID_Explore_CleanupToDeactivated,	TID_Explore_ReadyReceiveobstacleDistance,	TID_Explore_InitialiseReceivemaxSpeedParam,	TID_Explore_DeactivatedReceivemaxSpeedParam,	TID_Explore_ReadyReceivemaxSpeedParam,	TID_Explore_InitialiseReceivesafetyDistanceParam,	TID_Explore_DeactivatedReceivesafetyDistanceParam,	TID_Explore_ReadyReceivesafetyDistanceParam,	TID_Explore_InitialiseReceivePriorityParam,	TID_Explore_DeactivatedReceivePriorityParam,	TID_Explore_ReadyReceivePriorityParam
+	}
+	
+	int_int = {|
+		activateExplore__.TID_Explore_InitialiseToDeactivated,
+		deactivateExplore__.TID_Explore_InitialiseToDeactivated,
+		executeExplore__.TID_Explore_InitialiseToDeactivated,
+		exploreMaxSpeedParam__.TID_Explore_InitialiseToDeactivated,
+		exploreSafetyDistanceParam__.TID_Explore_InitialiseToDeactivated,
+		explorePriorityParam__.TID_Explore_InitialiseToDeactivated,
+		exploreObstacleDistance__.TID_Explore_InitialiseToDeactivated,
+		exploreVOut__.TID_Explore_InitialiseToDeactivated,
+		completeExplore__.TID_Explore_InitialiseToDeactivated,
+		internal__.TID_Explore_InitialiseToDeactivated,
+		activateExplore__.TID_Explore_DeactivatedToStartup,
+		deactivateExplore__.TID_Explore_DeactivatedToStartup,
+		executeExplore__.TID_Explore_DeactivatedToStartup,
+		exploreMaxSpeedParam__.TID_Explore_DeactivatedToStartup,
+		exploreSafetyDistanceParam__.TID_Explore_DeactivatedToStartup,
+		explorePriorityParam__.TID_Explore_DeactivatedToStartup,
+		exploreObstacleDistance__.TID_Explore_DeactivatedToStartup,
+		exploreVOut__.TID_Explore_DeactivatedToStartup,
+		completeExplore__.TID_Explore_DeactivatedToStartup,
+		internal__.TID_Explore_DeactivatedToStartup,
+		activateExplore__.TID_Explore_StartupToReady,
+		deactivateExplore__.TID_Explore_StartupToReady,
+		executeExplore__.TID_Explore_StartupToReady,
+		exploreMaxSpeedParam__.TID_Explore_StartupToReady,
+		exploreSafetyDistanceParam__.TID_Explore_StartupToReady,
+		explorePriorityParam__.TID_Explore_StartupToReady,
+		exploreObstacleDistance__.TID_Explore_StartupToReady,
+		exploreVOut__.TID_Explore_StartupToReady,
+		completeExplore__.TID_Explore_StartupToReady,
+		internal__.TID_Explore_StartupToReady,
+		activateExplore__.TID_Explore_ReadyToComputeoutputs,
+		deactivateExplore__.TID_Explore_ReadyToComputeoutputs,
+		executeExplore__.TID_Explore_ReadyToComputeoutputs,
+		exploreMaxSpeedParam__.TID_Explore_ReadyToComputeoutputs,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyToComputeoutputs,
+		explorePriorityParam__.TID_Explore_ReadyToComputeoutputs,
+		exploreObstacleDistance__.TID_Explore_ReadyToComputeoutputs,
+		exploreVOut__.TID_Explore_ReadyToComputeoutputs,
+		completeExplore__.TID_Explore_ReadyToComputeoutputs,
+		internal__.TID_Explore_ReadyToComputeoutputs,
+		activateExplore__.TID_Explore_ComputeoutputsToReady,
+		deactivateExplore__.TID_Explore_ComputeoutputsToReady,
+		executeExplore__.TID_Explore_ComputeoutputsToReady,
+		exploreMaxSpeedParam__.TID_Explore_ComputeoutputsToReady,
+		exploreSafetyDistanceParam__.TID_Explore_ComputeoutputsToReady,
+		explorePriorityParam__.TID_Explore_ComputeoutputsToReady,
+		exploreObstacleDistance__.TID_Explore_ComputeoutputsToReady,
+		exploreVOut__.TID_Explore_ComputeoutputsToReady,
+		completeExplore__.TID_Explore_ComputeoutputsToReady,
+		internal__.TID_Explore_ComputeoutputsToReady,
+		activateExplore__.TID_Explore_ReadyToCleanup,
+		deactivateExplore__.TID_Explore_ReadyToCleanup,
+		executeExplore__.TID_Explore_ReadyToCleanup,
+		exploreMaxSpeedParam__.TID_Explore_ReadyToCleanup,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyToCleanup,
+		explorePriorityParam__.TID_Explore_ReadyToCleanup,
+		exploreObstacleDistance__.TID_Explore_ReadyToCleanup,
+		exploreVOut__.TID_Explore_ReadyToCleanup,
+		completeExplore__.TID_Explore_ReadyToCleanup,
+		internal__.TID_Explore_ReadyToCleanup,
+		activateExplore__.TID_Explore_CleanupToDeactivated,
+		deactivateExplore__.TID_Explore_CleanupToDeactivated,
+		executeExplore__.TID_Explore_CleanupToDeactivated,
+		exploreMaxSpeedParam__.TID_Explore_CleanupToDeactivated,
+		exploreSafetyDistanceParam__.TID_Explore_CleanupToDeactivated,
+		explorePriorityParam__.TID_Explore_CleanupToDeactivated,
+		exploreObstacleDistance__.TID_Explore_CleanupToDeactivated,
+		exploreVOut__.TID_Explore_CleanupToDeactivated,
+		completeExplore__.TID_Explore_CleanupToDeactivated,
+		internal__.TID_Explore_CleanupToDeactivated,
+		activateExplore__.TID_Explore_ReadyReceiveobstacleDistance,
+		deactivateExplore__.TID_Explore_ReadyReceiveobstacleDistance,
+		executeExplore__.TID_Explore_ReadyReceiveobstacleDistance,
+		exploreMaxSpeedParam__.TID_Explore_ReadyReceiveobstacleDistance,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyReceiveobstacleDistance,
+		explorePriorityParam__.TID_Explore_ReadyReceiveobstacleDistance,
+		exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance,
+		exploreVOut__.TID_Explore_ReadyReceiveobstacleDistance,
+		completeExplore__.TID_Explore_ReadyReceiveobstacleDistance,
+		internal__.TID_Explore_ReadyReceiveobstacleDistance,
+		activateExplore__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		deactivateExplore__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		executeExplore__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		exploreMaxSpeedParam__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		exploreSafetyDistanceParam__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		explorePriorityParam__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		exploreObstacleDistance__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		exploreVOut__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		completeExplore__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		internal__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		activateExplore__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		deactivateExplore__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		executeExplore__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		explorePriorityParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		exploreObstacleDistance__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		exploreVOut__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		completeExplore__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		internal__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		activateExplore__.TID_Explore_ReadyReceivemaxSpeedParam,
+		deactivateExplore__.TID_Explore_ReadyReceivemaxSpeedParam,
+		executeExplore__.TID_Explore_ReadyReceivemaxSpeedParam,
+		exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+		explorePriorityParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+		exploreObstacleDistance__.TID_Explore_ReadyReceivemaxSpeedParam,
+		exploreVOut__.TID_Explore_ReadyReceivemaxSpeedParam,
+		completeExplore__.TID_Explore_ReadyReceivemaxSpeedParam,
+		internal__.TID_Explore_ReadyReceivemaxSpeedParam,
+		activateExplore__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		deactivateExplore__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		executeExplore__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		exploreMaxSpeedParam__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		exploreSafetyDistanceParam__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		explorePriorityParam__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		exploreObstacleDistance__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		exploreVOut__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		completeExplore__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		internal__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		activateExplore__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		deactivateExplore__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		executeExplore__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		explorePriorityParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		exploreObstacleDistance__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		exploreVOut__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		completeExplore__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		internal__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		activateExplore__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		deactivateExplore__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		executeExplore__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		exploreMaxSpeedParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		explorePriorityParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		exploreObstacleDistance__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		exploreVOut__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		completeExplore__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		internal__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		activateExplore__.TID_Explore_InitialiseReceivePriorityParam,
+		deactivateExplore__.TID_Explore_InitialiseReceivePriorityParam,
+		executeExplore__.TID_Explore_InitialiseReceivePriorityParam,
+		exploreMaxSpeedParam__.TID_Explore_InitialiseReceivePriorityParam,
+		exploreSafetyDistanceParam__.TID_Explore_InitialiseReceivePriorityParam,
+		explorePriorityParam__.TID_Explore_InitialiseReceivePriorityParam,
+		exploreObstacleDistance__.TID_Explore_InitialiseReceivePriorityParam,
+		exploreVOut__.TID_Explore_InitialiseReceivePriorityParam,
+		completeExplore__.TID_Explore_InitialiseReceivePriorityParam,
+		internal__.TID_Explore_InitialiseReceivePriorityParam,
+		activateExplore__.TID_Explore_DeactivatedReceivePriorityParam,
+		deactivateExplore__.TID_Explore_DeactivatedReceivePriorityParam,
+		executeExplore__.TID_Explore_DeactivatedReceivePriorityParam,
+		exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivePriorityParam,
+		exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivePriorityParam,
+		explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,
+		exploreObstacleDistance__.TID_Explore_DeactivatedReceivePriorityParam,
+		exploreVOut__.TID_Explore_DeactivatedReceivePriorityParam,
+		completeExplore__.TID_Explore_DeactivatedReceivePriorityParam,
+		internal__.TID_Explore_DeactivatedReceivePriorityParam,
+		activateExplore__.TID_Explore_ReadyReceivePriorityParam,
+		deactivateExplore__.TID_Explore_ReadyReceivePriorityParam,
+		executeExplore__.TID_Explore_ReadyReceivePriorityParam,
+		exploreMaxSpeedParam__.TID_Explore_ReadyReceivePriorityParam,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyReceivePriorityParam,
+		explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam,
+		exploreObstacleDistance__.TID_Explore_ReadyReceivePriorityParam,
+		exploreVOut__.TID_Explore_ReadyReceivePriorityParam,
+		completeExplore__.TID_Explore_ReadyReceivePriorityParam,
+		internal__.TID_Explore_ReadyReceivePriorityParam
+	|}
+		
+	
+	internal_events = {|enter,entered,exit,exited|}
+	shared_variable_events = {|
+	|}
+			
+	
+	-- declaring all states
+	CS_Explore_Initialise_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Explore_Initialise,SID_Explore_Deactivated,SID_Explore_Startup,SID_Explore_Ready,SID_Explore_ComputeOutputs,SID_Explore_Cleanup},
+		y____ <- {SID_Explore_Initialise}
+	|}
+	
+	
+	Explore_Initialise_triggers = {|
+		activateExplore__.TID_Explore_DeactivatedToStartup,
+		executeExplore__.TID_Explore_ReadyToComputeoutputs,
+		exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		internal__.TID_Explore_StartupToReady,
+		exploreMaxSpeedParam__.TID_Explore_InitialiseReceivemaxSpeedParam,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam,
+		explorePriorityParam__.TID_Explore_InitialiseReceivePriorityParam,
+		internal__.TID_Explore_InitialiseToDeactivated,
+		deactivateExplore__.TID_Explore_ReadyToCleanup,
+		internal__.TID_Explore_ComputeoutputsToReady,
+		exploreSafetyDistanceParam__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+		explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,
+		exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+		exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance,
+		internal__.TID_Explore_CleanupToDeactivated
+	|}
+	
+	State_Explore_Initialise(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = let
+		T_Explore_InitialiseToDeactivated(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = internal__!TID_Explore_InitialiseToDeactivated ->  exit.SID_Explore_Initialise.SID_Explore_Initialise -> SKIP;
+							SKIP;exited.SID_Explore_Initialise.SID_Explore_Initialise -> SKIP;
+							enter!SID_Explore_Initialise!SID_Explore_Deactivated -> entered!SID_Explore_Initialise!SID_Explore_Deactivated ->
+							State_Explore_Initialise(id__,
+									    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+		T_Explore_InitialiseReceivemaxSpeedParam(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = exploreMaxSpeedParam__!TID_Explore_InitialiseReceivemaxSpeedParam.in?maxSpeedParam -> set_maxSpeedParam!maxSpeedParam ->  (exit.SID_Explore_Initialise.SID_Explore_Initialise -> SKIP;
+							SKIP;exited.SID_Explore_Initialise.SID_Explore_Initialise -> SKIP;
+							true & (set_maxSpeedParamInitialised!true -> SKIP);enter!SID_Explore_Initialise!SID_Explore_Initialise -> State_Explore_Initialise_execute(id__,SID_Explore_Initialise)
+		)
+		T_Explore_InitialiseReceivesafetyDistanceParam(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = exploreSafetyDistanceParam__!TID_Explore_InitialiseReceivesafetyDistanceParam.in?safetyDistanceParam -> set_safetyDistanceParam!safetyDistanceParam ->  (exit.SID_Explore_Initialise.SID_Explore_Initialise -> SKIP;
+							SKIP;exited.SID_Explore_Initialise.SID_Explore_Initialise -> SKIP;
+							true & (set_safetyDistanceParamInitialised!true -> SKIP);enter!SID_Explore_Initialise!SID_Explore_Initialise -> State_Explore_Initialise_execute(id__,SID_Explore_Initialise)
+		)
+		T_Explore_InitialiseReceivePriorityParam(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = explorePriorityParam__!TID_Explore_InitialiseReceivePriorityParam.in?PriorityParam -> set_PriorityParam!PriorityParam ->  (exit.SID_Explore_Initialise.SID_Explore_Initialise -> SKIP;
+							SKIP;exited.SID_Explore_Initialise.SID_Explore_Initialise -> SKIP;
+							true & (set_PriorityParamInitialised!true -> SKIP);enter!SID_Explore_Initialise!SID_Explore_Initialise -> State_Explore_Initialise_execute(id__,SID_Explore_Initialise)
+		)
+		State_Explore_Initialise_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Explore_Initialise ->
+			(SKIP; STOP /\ (
+				T_Explore_InitialiseToDeactivated(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_InitialiseReceivemaxSpeedParam(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_InitialiseReceivesafetyDistanceParam(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_InitialiseReceivePriorityParam(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_InitialiseReceivemaxSpeedParam,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_InitialiseReceivePriorityParam,TID_Explore_InitialiseToDeactivated,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_InitialiseReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated}) -> exit?y____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (
+						SKIP;
+						exited!y____!SID_Explore_Initialise -> SKIP);
+						State_Explore_Initialise(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] activateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_InitialiseReceivemaxSpeedParam,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_InitialiseReceivePriorityParam,TID_Explore_InitialiseToDeactivated,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_InitialiseReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (
+						SKIP;
+						exited!y____!SID_Explore_Initialise -> SKIP);
+						State_Explore_Initialise(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] deactivateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_InitialiseReceivemaxSpeedParam,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_InitialiseReceivePriorityParam,TID_Explore_InitialiseToDeactivated,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_InitialiseReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (
+						SKIP;
+						exited!y____!SID_Explore_Initialise -> SKIP);
+						State_Explore_Initialise(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] executeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_InitialiseReceivemaxSpeedParam,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_InitialiseReceivePriorityParam,TID_Explore_InitialiseToDeactivated,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_InitialiseReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (
+						SKIP;
+						exited!y____!SID_Explore_Initialise -> SKIP);
+						State_Explore_Initialise(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreMaxSpeedParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_InitialiseReceivemaxSpeedParam,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_InitialiseReceivePriorityParam,TID_Explore_InitialiseToDeactivated,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_InitialiseReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (
+						SKIP;
+						exited!y____!SID_Explore_Initialise -> SKIP);
+						State_Explore_Initialise(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreSafetyDistanceParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_InitialiseReceivemaxSpeedParam,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_InitialiseReceivePriorityParam,TID_Explore_InitialiseToDeactivated,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_InitialiseReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (
+						SKIP;
+						exited!y____!SID_Explore_Initialise -> SKIP);
+						State_Explore_Initialise(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] explorePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_InitialiseReceivemaxSpeedParam,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_InitialiseReceivePriorityParam,TID_Explore_InitialiseToDeactivated,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_InitialiseReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (
+						SKIP;
+						exited!y____!SID_Explore_Initialise -> SKIP);
+						State_Explore_Initialise(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreObstacleDistance__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_InitialiseReceivemaxSpeedParam,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_InitialiseReceivePriorityParam,TID_Explore_InitialiseToDeactivated,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_InitialiseReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (
+						SKIP;
+						exited!y____!SID_Explore_Initialise -> SKIP);
+						State_Explore_Initialise(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreVOut__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_InitialiseReceivemaxSpeedParam,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_InitialiseReceivePriorityParam,TID_Explore_InitialiseToDeactivated,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_InitialiseReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (
+						SKIP;
+						exited!y____!SID_Explore_Initialise -> SKIP);
+						State_Explore_Initialise(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] completeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_InitialiseReceivemaxSpeedParam,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_InitialiseReceivePriorityParam,TID_Explore_InitialiseToDeactivated,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_InitialiseReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (
+						SKIP;
+						exited!y____!SID_Explore_Initialise -> SKIP);
+						State_Explore_Initialise(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Explore_Initialise})!SID_Explore_Initialise -> (State_Explore_Initialise_execute(id__,x____))
+	
+	CS_Explore_Deactivated_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Explore_Initialise,SID_Explore_Deactivated,SID_Explore_Startup,SID_Explore_Ready,SID_Explore_ComputeOutputs,SID_Explore_Cleanup},
+		y____ <- {SID_Explore_Deactivated}
+	|}
+	
+	
+	Explore_Deactivated_triggers = {|
+		activateExplore__.TID_Explore_DeactivatedToStartup,
+		executeExplore__.TID_Explore_ReadyToComputeoutputs,
+		exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		internal__.TID_Explore_StartupToReady,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam,
+		deactivateExplore__.TID_Explore_ReadyToCleanup,
+		internal__.TID_Explore_ComputeoutputsToReady,
+		explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,
+		exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+		exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance,
+		internal__.TID_Explore_CleanupToDeactivated
+	|}
+	
+	State_Explore_Deactivated(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = let
+		T_Explore_DeactivatedToStartup(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = activateExplore__!TID_Explore_DeactivatedToStartup.in ->  (exit.SID_Explore_Deactivated.SID_Explore_Deactivated -> SKIP;
+							SKIP;exited.SID_Explore_Deactivated.SID_Explore_Deactivated -> SKIP;
+							enter!SID_Explore_Deactivated!SID_Explore_Startup -> entered!SID_Explore_Deactivated!SID_Explore_Startup ->
+							State_Explore_Deactivated(id__,
+									    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+		)
+		T_Explore_DeactivatedReceivemaxSpeedParam(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = exploreMaxSpeedParam__!TID_Explore_DeactivatedReceivemaxSpeedParam.in?maxSpeedParam -> set_maxSpeedParam!maxSpeedParam ->  (exit.SID_Explore_Deactivated.SID_Explore_Deactivated -> SKIP;
+							SKIP;exited.SID_Explore_Deactivated.SID_Explore_Deactivated -> SKIP;
+							enter!SID_Explore_Deactivated!SID_Explore_Deactivated -> State_Explore_Deactivated_execute(id__,SID_Explore_Deactivated)
+		)
+		T_Explore_DeactivatedReceivesafetyDistanceParam(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = exploreSafetyDistanceParam__!TID_Explore_DeactivatedReceivesafetyDistanceParam.in?safetyDistanceParam -> set_safetyDistanceParam!safetyDistanceParam ->  (exit.SID_Explore_Deactivated.SID_Explore_Deactivated -> SKIP;
+							SKIP;exited.SID_Explore_Deactivated.SID_Explore_Deactivated -> SKIP;
+							enter!SID_Explore_Deactivated!SID_Explore_Deactivated -> State_Explore_Deactivated_execute(id__,SID_Explore_Deactivated)
+		)
+		T_Explore_DeactivatedReceivePriorityParam(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = explorePriorityParam__!TID_Explore_DeactivatedReceivePriorityParam.in?PriorityParam -> set_PriorityParam!PriorityParam ->  (exit.SID_Explore_Deactivated.SID_Explore_Deactivated -> SKIP;
+							SKIP;exited.SID_Explore_Deactivated.SID_Explore_Deactivated -> SKIP;
+							enter!SID_Explore_Deactivated!SID_Explore_Deactivated -> State_Explore_Deactivated_execute(id__,SID_Explore_Deactivated)
+		)
+		State_Explore_Deactivated_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Explore_Deactivated ->
+			(SKIP; STOP /\ (
+				T_Explore_DeactivatedToStartup(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_DeactivatedReceivemaxSpeedParam(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_DeactivatedReceivesafetyDistanceParam(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_DeactivatedReceivePriorityParam(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated}) -> exit?y____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Explore_Deactivated -> SKIP);
+						State_Explore_Deactivated(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] activateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Explore_Deactivated -> SKIP);
+						State_Explore_Deactivated(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] deactivateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Explore_Deactivated -> SKIP);
+						State_Explore_Deactivated(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] executeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Explore_Deactivated -> SKIP);
+						State_Explore_Deactivated(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreMaxSpeedParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Explore_Deactivated -> SKIP);
+						State_Explore_Deactivated(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreSafetyDistanceParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Explore_Deactivated -> SKIP);
+						State_Explore_Deactivated(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] explorePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Explore_Deactivated -> SKIP);
+						State_Explore_Deactivated(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreObstacleDistance__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Explore_Deactivated -> SKIP);
+						State_Explore_Deactivated(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreVOut__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Explore_Deactivated -> SKIP);
+						State_Explore_Deactivated(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] completeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Explore_Deactivated -> SKIP);
+						State_Explore_Deactivated(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Explore_Deactivated})!SID_Explore_Deactivated -> (State_Explore_Deactivated_execute(id__,x____))
+	
+	CS_Explore_Startup_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Explore_Initialise,SID_Explore_Deactivated,SID_Explore_Startup,SID_Explore_Ready,SID_Explore_ComputeOutputs,SID_Explore_Cleanup},
+		y____ <- {SID_Explore_Startup}
+	|}
+	
+	
+	Explore_Startup_triggers = {|
+		activateExplore__.TID_Explore_DeactivatedToStartup,
+		executeExplore__.TID_Explore_ReadyToComputeoutputs,
+		exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		internal__.TID_Explore_StartupToReady,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam,
+		deactivateExplore__.TID_Explore_ReadyToCleanup,
+		internal__.TID_Explore_ComputeoutputsToReady,
+		explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,
+		exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+		exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance,
+		internal__.TID_Explore_CleanupToDeactivated
+	|}
+	
+	State_Explore_Startup(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = let
+		T_Explore_StartupToReady(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = internal__!TID_Explore_StartupToReady ->  exit.SID_Explore_Startup.SID_Explore_Startup -> SKIP;
+							SKIP;exited.SID_Explore_Startup.SID_Explore_Startup -> SKIP;
+							enter!SID_Explore_Startup!SID_Explore_Ready -> entered!SID_Explore_Startup!SID_Explore_Ready ->
+							State_Explore_Startup(id__,
+									    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+		State_Explore_Startup_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Explore_Startup ->
+			(SKIP; STOP /\ (
+				T_Explore_StartupToReady(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated}) -> exit?y____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (
+						SKIP;
+						exited!y____!SID_Explore_Startup -> SKIP);
+						State_Explore_Startup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] activateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (
+						SKIP;
+						exited!y____!SID_Explore_Startup -> SKIP);
+						State_Explore_Startup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] deactivateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (
+						SKIP;
+						exited!y____!SID_Explore_Startup -> SKIP);
+						State_Explore_Startup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] executeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (
+						SKIP;
+						exited!y____!SID_Explore_Startup -> SKIP);
+						State_Explore_Startup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreMaxSpeedParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (
+						SKIP;
+						exited!y____!SID_Explore_Startup -> SKIP);
+						State_Explore_Startup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreSafetyDistanceParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (
+						SKIP;
+						exited!y____!SID_Explore_Startup -> SKIP);
+						State_Explore_Startup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] explorePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (
+						SKIP;
+						exited!y____!SID_Explore_Startup -> SKIP);
+						State_Explore_Startup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreObstacleDistance__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (
+						SKIP;
+						exited!y____!SID_Explore_Startup -> SKIP);
+						State_Explore_Startup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreVOut__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (
+						SKIP;
+						exited!y____!SID_Explore_Startup -> SKIP);
+						State_Explore_Startup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] completeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (
+						SKIP;
+						exited!y____!SID_Explore_Startup -> SKIP);
+						State_Explore_Startup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Explore_Startup})!SID_Explore_Startup -> (State_Explore_Startup_execute(id__,x____))
+	
+	CS_Explore_Ready_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Explore_Initialise,SID_Explore_Deactivated,SID_Explore_Startup,SID_Explore_Ready,SID_Explore_ComputeOutputs,SID_Explore_Cleanup},
+		y____ <- {SID_Explore_Ready}
+	|}
+	
+	
+	Explore_Ready_triggers = {|
+		activateExplore__.TID_Explore_DeactivatedToStartup,
+		executeExplore__.TID_Explore_ReadyToComputeoutputs,
+		exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		internal__.TID_Explore_StartupToReady,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam,
+		deactivateExplore__.TID_Explore_ReadyToCleanup,
+		internal__.TID_Explore_ComputeoutputsToReady,
+		explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,
+		exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+		exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance,
+		internal__.TID_Explore_CleanupToDeactivated
+	|}
+	
+	State_Explore_Ready(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = let
+		T_Explore_ReadyToComputeoutputs(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = executeExplore__!TID_Explore_ReadyToComputeoutputs.in ->  (exit.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							SKIP;exited.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							enter!SID_Explore_Ready!SID_Explore_ComputeOutputs -> entered!SID_Explore_Ready!SID_Explore_ComputeOutputs ->
+							State_Explore_Ready(id__,
+									    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+		)
+		T_Explore_ReadyToCleanup(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = deactivateExplore__!TID_Explore_ReadyToCleanup.in ->  (exit.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							SKIP;exited.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							enter!SID_Explore_Ready!SID_Explore_Cleanup -> entered!SID_Explore_Ready!SID_Explore_Cleanup ->
+							State_Explore_Ready(id__,
+									    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+		)
+		T_Explore_ReadyReceiveobstacleDistance(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = exploreObstacleDistance__!TID_Explore_ReadyReceiveobstacleDistance.in?obstacleDistance -> set_obstacleDistance!obstacleDistance ->  (exit.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							SKIP;exited.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							enter!SID_Explore_Ready!SID_Explore_Ready -> State_Explore_Ready_execute(id__,SID_Explore_Ready)
+		)
+		T_Explore_ReadyReceivemaxSpeedParam(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = exploreMaxSpeedParam__!TID_Explore_ReadyReceivemaxSpeedParam.in?maxSpeedParam -> set_maxSpeedParam!maxSpeedParam ->  (exit.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							SKIP;exited.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							enter!SID_Explore_Ready!SID_Explore_Ready -> State_Explore_Ready_execute(id__,SID_Explore_Ready)
+		)
+		T_Explore_ReadyReceivesafetyDistanceParam(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = exploreSafetyDistanceParam__!TID_Explore_ReadyReceivesafetyDistanceParam.in?safetyDistanceParam -> set_safetyDistanceParam!safetyDistanceParam ->  (exit.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							SKIP;exited.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							enter!SID_Explore_Ready!SID_Explore_Ready -> State_Explore_Ready_execute(id__,SID_Explore_Ready)
+		)
+		T_Explore_ReadyReceivePriorityParam(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = explorePriorityParam__!TID_Explore_ReadyReceivePriorityParam.in?PriorityParam -> set_PriorityParam!PriorityParam ->  (exit.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							SKIP;exited.SID_Explore_Ready.SID_Explore_Ready -> SKIP;
+							enter!SID_Explore_Ready!SID_Explore_Ready -> State_Explore_Ready_execute(id__,SID_Explore_Ready)
+		)
+		State_Explore_Ready_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Explore_Ready ->
+			(SKIP; STOP /\ (
+				T_Explore_ReadyToComputeoutputs(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_ReadyToCleanup(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_ReadyReceiveobstacleDistance(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_ReadyReceivemaxSpeedParam(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_ReadyReceivesafetyDistanceParam(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)[]
+				T_Explore_ReadyReceivePriorityParam(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated}) -> exit?y____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (
+						SKIP;
+						exited!y____!SID_Explore_Ready -> SKIP);
+						State_Explore_Ready(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] activateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (
+						SKIP;
+						exited!y____!SID_Explore_Ready -> SKIP);
+						State_Explore_Ready(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] deactivateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (
+						SKIP;
+						exited!y____!SID_Explore_Ready -> SKIP);
+						State_Explore_Ready(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] executeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (
+						SKIP;
+						exited!y____!SID_Explore_Ready -> SKIP);
+						State_Explore_Ready(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreMaxSpeedParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (
+						SKIP;
+						exited!y____!SID_Explore_Ready -> SKIP);
+						State_Explore_Ready(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreSafetyDistanceParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (
+						SKIP;
+						exited!y____!SID_Explore_Ready -> SKIP);
+						State_Explore_Ready(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] explorePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (
+						SKIP;
+						exited!y____!SID_Explore_Ready -> SKIP);
+						State_Explore_Ready(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreObstacleDistance__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (
+						SKIP;
+						exited!y____!SID_Explore_Ready -> SKIP);
+						State_Explore_Ready(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreVOut__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (
+						SKIP;
+						exited!y____!SID_Explore_Ready -> SKIP);
+						State_Explore_Ready(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] completeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (
+						SKIP;
+						exited!y____!SID_Explore_Ready -> SKIP);
+						State_Explore_Ready(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Explore_Ready})!SID_Explore_Ready -> (State_Explore_Ready_execute(id__,x____))
+	
+	CS_Explore_ComputeOutputs_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Explore_Initialise,SID_Explore_Deactivated,SID_Explore_Startup,SID_Explore_Ready,SID_Explore_ComputeOutputs,SID_Explore_Cleanup},
+		y____ <- {SID_Explore_ComputeOutputs}
+	|}
+	
+	
+	Explore_ComputeOutputs_triggers = {|
+		activateExplore__.TID_Explore_DeactivatedToStartup,
+		executeExplore__.TID_Explore_ReadyToComputeoutputs,
+		exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		internal__.TID_Explore_StartupToReady,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam,
+		deactivateExplore__.TID_Explore_ReadyToCleanup,
+		internal__.TID_Explore_ComputeoutputsToReady,
+		explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,
+		exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+		exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance,
+		internal__.TID_Explore_CleanupToDeactivated
+	|}
+	
+	State_Explore_ComputeOutputs(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = let
+		T_Explore_ComputeoutputsToReady(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = internal__!TID_Explore_ComputeoutputsToReady ->  exit.SID_Explore_ComputeOutputs.SID_Explore_ComputeOutputs -> SKIP;
+							SKIP;exited.SID_Explore_ComputeOutputs.SID_Explore_ComputeOutputs -> SKIP;
+							true&(completeExplore.out -> SKIP);enter!SID_Explore_ComputeOutputs!SID_Explore_Ready -> entered!SID_Explore_ComputeOutputs!SID_Explore_Ready ->
+							State_Explore_ComputeOutputs(id__,
+									    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+		State_Explore_ComputeOutputs_execute(id__,o____) = get_obstacleDistance?obstacleDistance -> get_safetyDistanceParam?safetyDistanceParam -> true&(if ((obstacleDistance>safetyDistanceParam)) then (get_maxSpeedParam?maxSpeedParam -> get_nextMotorsVelocity?nextMotorsVelocity -> true & (set_nextMotorsVelocity!update_Types_Velocities_linear(nextMotorsVelocity,maxSpeedParam) -> SKIP);get_nextMotorsVelocity?nextMotorsVelocity -> true & (set_nextMotorsVelocity!update_Types_Velocities_angular(nextMotorsVelocity,0) -> SKIP);get_nextMotorsVelocity?nextMotorsVelocity -> get_PriorityParam?PriorityParam -> true&(exploreVOut.out!(nextMotorsVelocity,PriorityParam) -> SKIP)) else (get_nextMotorsVelocity?nextMotorsVelocity -> true & (set_nextMotorsVelocity!update_Types_Velocities_linear(nextMotorsVelocity,0) -> SKIP);get_maxSpeedParam?maxSpeedParam -> get_nextMotorsVelocity?nextMotorsVelocity -> true & (set_nextMotorsVelocity!update_Types_Velocities_angular(nextMotorsVelocity,maxSpeedParam) -> SKIP);get_nextMotorsVelocity?nextMotorsVelocity -> get_PriorityParam?PriorityParam -> true&(exploreVOut.out!(nextMotorsVelocity,PriorityParam) -> SKIP))); 
+			entered!o____!SID_Explore_ComputeOutputs ->
+			(SKIP; STOP /\ (
+				T_Explore_ComputeoutputsToReady(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated}) -> exit?y____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (
+						SKIP;
+						exited!y____!SID_Explore_ComputeOutputs -> SKIP);
+						State_Explore_ComputeOutputs(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] activateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (
+						SKIP;
+						exited!y____!SID_Explore_ComputeOutputs -> SKIP);
+						State_Explore_ComputeOutputs(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] deactivateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (
+						SKIP;
+						exited!y____!SID_Explore_ComputeOutputs -> SKIP);
+						State_Explore_ComputeOutputs(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] executeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (
+						SKIP;
+						exited!y____!SID_Explore_ComputeOutputs -> SKIP);
+						State_Explore_ComputeOutputs(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreMaxSpeedParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (
+						SKIP;
+						exited!y____!SID_Explore_ComputeOutputs -> SKIP);
+						State_Explore_ComputeOutputs(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreSafetyDistanceParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (
+						SKIP;
+						exited!y____!SID_Explore_ComputeOutputs -> SKIP);
+						State_Explore_ComputeOutputs(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] explorePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (
+						SKIP;
+						exited!y____!SID_Explore_ComputeOutputs -> SKIP);
+						State_Explore_ComputeOutputs(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreObstacleDistance__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (
+						SKIP;
+						exited!y____!SID_Explore_ComputeOutputs -> SKIP);
+						State_Explore_ComputeOutputs(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreVOut__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (
+						SKIP;
+						exited!y____!SID_Explore_ComputeOutputs -> SKIP);
+						State_Explore_ComputeOutputs(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] completeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (
+						SKIP;
+						exited!y____!SID_Explore_ComputeOutputs -> SKIP);
+						State_Explore_ComputeOutputs(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Explore_ComputeOutputs})!SID_Explore_ComputeOutputs -> (State_Explore_ComputeOutputs_execute(id__,x____))
+	
+	CS_Explore_Cleanup_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Explore_Initialise,SID_Explore_Deactivated,SID_Explore_Startup,SID_Explore_Ready,SID_Explore_ComputeOutputs,SID_Explore_Cleanup},
+		y____ <- {SID_Explore_Cleanup}
+	|}
+	
+	
+	Explore_Cleanup_triggers = {|
+		activateExplore__.TID_Explore_DeactivatedToStartup,
+		executeExplore__.TID_Explore_ReadyToComputeoutputs,
+		exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+		internal__.TID_Explore_StartupToReady,
+		exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+		exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+		explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam,
+		deactivateExplore__.TID_Explore_ReadyToCleanup,
+		internal__.TID_Explore_ComputeoutputsToReady,
+		explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,
+		exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+		exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance,
+		internal__.TID_Explore_CleanupToDeactivated
+	|}
+	
+	State_Explore_Cleanup(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = let
+		T_Explore_CleanupToDeactivated(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = internal__!TID_Explore_CleanupToDeactivated ->  exit.SID_Explore_Cleanup.SID_Explore_Cleanup -> SKIP;
+							SKIP;exited.SID_Explore_Cleanup.SID_Explore_Cleanup -> SKIP;
+							enter!SID_Explore_Cleanup!SID_Explore_Deactivated -> entered!SID_Explore_Cleanup!SID_Explore_Deactivated ->
+							State_Explore_Cleanup(id__,
+									    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+		State_Explore_Cleanup_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Explore_Cleanup ->
+			(SKIP; STOP /\ (
+				T_Explore_CleanupToDeactivated(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated}) -> exit?y____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Explore_Cleanup -> SKIP);
+						State_Explore_Cleanup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] activateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Explore_Cleanup -> SKIP);
+						State_Explore_Cleanup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] deactivateExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Explore_Cleanup -> SKIP);
+						State_Explore_Cleanup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] executeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Explore_Cleanup -> SKIP);
+						State_Explore_Cleanup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreMaxSpeedParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Explore_Cleanup -> SKIP);
+						State_Explore_Cleanup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreSafetyDistanceParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Explore_Cleanup -> SKIP);
+						State_Explore_Cleanup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] explorePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Explore_Cleanup -> SKIP);
+						State_Explore_Cleanup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreObstacleDistance__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Explore_Cleanup -> SKIP);
+						State_Explore_Cleanup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] exploreVOut__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Explore_Cleanup -> SKIP);
+						State_Explore_Cleanup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[] completeExplore__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Explore_DeactivatedToStartup,TID_Explore_ReadyToComputeoutputs,TID_Explore_DeactivatedReceivemaxSpeedParam,TID_Explore_StartupToReady,TID_Explore_ReadyReceivesafetyDistanceParam,TID_Explore_DeactivatedReceivesafetyDistanceParam,TID_Explore_ReadyReceivePriorityParam,TID_Explore_ReadyToCleanup,TID_Explore_ComputeoutputsToReady,TID_Explore_DeactivatedReceivePriorityParam,TID_Explore_ReadyReceivemaxSpeedParam,TID_Explore_ReadyReceiveobstacleDistance,TID_Explore_CleanupToDeactivated})?d____ ->	exit?y____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Explore_Cleanup -> SKIP);
+						State_Explore_Cleanup(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Explore_Cleanup})!SID_Explore_Cleanup -> (State_Explore_Cleanup_execute(id__,x____))
+	
+	
+	I_Explore_Initial(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = let
+		T_Explore_InitialToInitialise(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = internal__!TID_Explore_InitialToInitialise -> enter!SID_Explore!SID_Explore_Initialise -> entered!SID_Explore!SID_Explore_Initialise ->
+		SKIP
+	within
+		T_Explore_InitialToInitialise(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+	
+	
+	State_Explore_Initialise_R(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = 
+		State_Explore_Initialise(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			[|diff(int_int,Explore_Initialise_triggers)|]
+		SKIP
+			 		
+	State_Explore_Deactivated_R(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = 
+		State_Explore_Deactivated(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			[|diff(int_int,Explore_Deactivated_triggers)|]
+		SKIP
+			 		
+	State_Explore_Startup_R(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = 
+		State_Explore_Startup(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			[|diff(int_int,Explore_Startup_triggers)|]
+		SKIP
+			 		
+	State_Explore_Ready_R(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = 
+		State_Explore_Ready(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			[|diff(int_int,Explore_Ready_triggers)|]
+		SKIP
+			 		
+	State_Explore_ComputeOutputs_R(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = 
+		State_Explore_ComputeOutputs(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			[|diff(int_int,Explore_ComputeOutputs_triggers)|]
+		SKIP
+			 		
+	State_Explore_Cleanup_R(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = 
+		State_Explore_Cleanup(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			[|diff(int_int,Explore_Cleanup_triggers)|]
+		SKIP
+			 		
+		
+	STM(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = (
+		I_Explore_Initial(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+			[|
+				{|enter.x____.y____, entered.x____.y____, exit.x____.y____, exited.x____.y____ |
+					x____ <- diff(SIDS,{SID_Explore_Initialise,SID_Explore_Deactivated,SID_Explore_Startup,SID_Explore_Ready,SID_Explore_ComputeOutputs,SID_Explore_Cleanup}),
+					y____ <- {SID_Explore_Initialise,SID_Explore_Deactivated,SID_Explore_Startup,SID_Explore_Ready,SID_Explore_ComputeOutputs,SID_Explore_Cleanup}
+			|}|]
+		(
+			State_Explore_Initialise_R(id__,
+					    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[|inter(CS_Explore_Initialise_sync,union(union(union(union(CS_Explore_Deactivated_sync,CS_Explore_Startup_sync),CS_Explore_Ready_sync),CS_Explore_ComputeOutputs_sync),CS_Explore_Cleanup_sync))|]
+			(
+				State_Explore_Deactivated_R(id__,
+						    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+					[|inter(CS_Explore_Deactivated_sync,union(union(union(CS_Explore_Startup_sync,CS_Explore_Ready_sync),CS_Explore_ComputeOutputs_sync),CS_Explore_Cleanup_sync))|]
+				(
+					State_Explore_Startup_R(id__,
+							    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+						[|inter(CS_Explore_Startup_sync,union(union(CS_Explore_Ready_sync,CS_Explore_ComputeOutputs_sync),CS_Explore_Cleanup_sync))|]
+					(
+						State_Explore_Ready_R(id__,
+								    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+							[|inter(CS_Explore_Ready_sync,union(CS_Explore_ComputeOutputs_sync,CS_Explore_Cleanup_sync))|]
+						(
+							State_Explore_ComputeOutputs_R(id__,
+									    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+								[|inter(CS_Explore_ComputeOutputs_sync,CS_Explore_Cleanup_sync)|]
+							State_Explore_Cleanup_R(id__,
+									    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+						)
+					)
+				)
+			)
+		)
+	)
+	
+	-- optimized memory process
+	channel getV_maxSpeedParam: core_real
+	channel getV_safetyDistanceParam: core_int
+	channel getV_PriorityParam: core_nat
+	channel getV_obstacleDistance: core_int
+	channel getV_vOut: Types_Velocities
+	channel getV_PriorityParamInitialised: core_boolean
+	channel getV_maxSpeedParamInitialised: core_boolean
+	channel getV_safetyDistanceParamInitialised: core_boolean
+	channel getV_nextMotorsVelocity: Types_Velocities
+	
+	-- individual memory processes
+	Memory_maxSpeedParam(maxSpeedParam) = (
+		get_maxSpeedParam!maxSpeedParam -> Memory_maxSpeedParam(maxSpeedParam)
+		[]
+		getV_maxSpeedParam!maxSpeedParam -> Memory_maxSpeedParam(maxSpeedParam)
+		[]
+		set_maxSpeedParam?x__ -> Memory_maxSpeedParam(x__)
+		[]
+		exploreMaxSpeedParam__!TID_Explore_InitialiseReceivemaxSpeedParam.in?maxSpeedParam -> Memory_maxSpeedParam(maxSpeedParam)
+		[]
+		exploreMaxSpeedParam__!TID_Explore_DeactivatedReceivemaxSpeedParam.in?maxSpeedParam -> Memory_maxSpeedParam(maxSpeedParam)
+		[]
+		exploreMaxSpeedParam__!TID_Explore_ReadyReceivemaxSpeedParam.in?maxSpeedParam -> Memory_maxSpeedParam(maxSpeedParam)
+	)
+	Memory_safetyDistanceParam(safetyDistanceParam) = (
+		get_safetyDistanceParam!safetyDistanceParam -> Memory_safetyDistanceParam(safetyDistanceParam)
+		[]
+		getV_safetyDistanceParam!safetyDistanceParam -> Memory_safetyDistanceParam(safetyDistanceParam)
+		[]
+		set_safetyDistanceParam?x__ -> Memory_safetyDistanceParam(x__)
+		[]
+		exploreSafetyDistanceParam__!TID_Explore_InitialiseReceivesafetyDistanceParam.in?safetyDistanceParam -> Memory_safetyDistanceParam(safetyDistanceParam)
+		[]
+		exploreSafetyDistanceParam__!TID_Explore_DeactivatedReceivesafetyDistanceParam.in?safetyDistanceParam -> Memory_safetyDistanceParam(safetyDistanceParam)
+		[]
+		exploreSafetyDistanceParam__!TID_Explore_ReadyReceivesafetyDistanceParam.in?safetyDistanceParam -> Memory_safetyDistanceParam(safetyDistanceParam)
+	)
+	Memory_PriorityParam(PriorityParam) = (
+		get_PriorityParam!PriorityParam -> Memory_PriorityParam(PriorityParam)
+		[]
+		getV_PriorityParam!PriorityParam -> Memory_PriorityParam(PriorityParam)
+		[]
+		set_PriorityParam?x__ -> Memory_PriorityParam(x__)
+		[]
+		explorePriorityParam__!TID_Explore_InitialiseReceivePriorityParam.in?PriorityParam -> Memory_PriorityParam(PriorityParam)
+		[]
+		explorePriorityParam__!TID_Explore_DeactivatedReceivePriorityParam.in?PriorityParam -> Memory_PriorityParam(PriorityParam)
+		[]
+		explorePriorityParam__!TID_Explore_ReadyReceivePriorityParam.in?PriorityParam -> Memory_PriorityParam(PriorityParam)
+	)
+	Memory_obstacleDistance(obstacleDistance) = (
+		get_obstacleDistance!obstacleDistance -> Memory_obstacleDistance(obstacleDistance)
+		[]
+		getV_obstacleDistance!obstacleDistance -> Memory_obstacleDistance(obstacleDistance)
+		[]
+		set_obstacleDistance?x__ -> Memory_obstacleDistance(x__)
+		[]
+		exploreObstacleDistance__!TID_Explore_ReadyReceiveobstacleDistance.in?obstacleDistance -> Memory_obstacleDistance(obstacleDistance)
+	)
+	Memory_vOut(vOut) = (
+		get_vOut!vOut -> Memory_vOut(vOut)
+		[]
+		getV_vOut!vOut -> Memory_vOut(vOut)
+		[]
+		set_vOut?x__ -> Memory_vOut(x__)
+	)
+	Memory_PriorityParamInitialised(PriorityParamInitialised) = (
+		get_PriorityParamInitialised!PriorityParamInitialised -> Memory_PriorityParamInitialised(PriorityParamInitialised)
+		[]
+		getV_PriorityParamInitialised!PriorityParamInitialised -> Memory_PriorityParamInitialised(PriorityParamInitialised)
+		[]
+		set_PriorityParamInitialised?x__ -> Memory_PriorityParamInitialised(x__)
+	)
+	Memory_maxSpeedParamInitialised(maxSpeedParamInitialised) = (
+		get_maxSpeedParamInitialised!maxSpeedParamInitialised -> Memory_maxSpeedParamInitialised(maxSpeedParamInitialised)
+		[]
+		getV_maxSpeedParamInitialised!maxSpeedParamInitialised -> Memory_maxSpeedParamInitialised(maxSpeedParamInitialised)
+		[]
+		set_maxSpeedParamInitialised?x__ -> Memory_maxSpeedParamInitialised(x__)
+	)
+	Memory_safetyDistanceParamInitialised(safetyDistanceParamInitialised) = (
+		get_safetyDistanceParamInitialised!safetyDistanceParamInitialised -> Memory_safetyDistanceParamInitialised(safetyDistanceParamInitialised)
+		[]
+		getV_safetyDistanceParamInitialised!safetyDistanceParamInitialised -> Memory_safetyDistanceParamInitialised(safetyDistanceParamInitialised)
+		[]
+		set_safetyDistanceParamInitialised?x__ -> Memory_safetyDistanceParamInitialised(x__)
+	)
+	Memory_nextMotorsVelocity(nextMotorsVelocity) = (
+		get_nextMotorsVelocity!nextMotorsVelocity -> Memory_nextMotorsVelocity(nextMotorsVelocity)
+		[]
+		getV_nextMotorsVelocity!nextMotorsVelocity -> Memory_nextMotorsVelocity(nextMotorsVelocity)
+		[]
+		set_nextMotorsVelocity?x__ -> Memory_nextMotorsVelocity(x__)
+	)
+	
+	-- processes that read variables and offer transitions
+	MemoryTransitions(id__, maxSpeedParam
+				, safetyDistanceParam
+				, PriorityParam
+				, obstacleDistance
+				, vOut
+				, PriorityParamInitialised
+				, maxSpeedParamInitialised
+				, safetyDistanceParamInitialised
+				, nextMotorsVelocity
+				,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = 		
+	(internal__!TID_Explore_InitialToInitialise -> SKIP
+	[]
+	(((safetyDistanceParamInitialised and PriorityParamInitialised) and maxSpeedParamInitialised))&(internal__!TID_Explore_InitialiseToDeactivated -> SKIP)
+	[]
+	activateExplore__!TID_Explore_DeactivatedToStartup.in -> SKIP
+	[]
+	internal__!TID_Explore_StartupToReady -> SKIP
+	[]
+	executeExplore__!TID_Explore_ReadyToComputeoutputs.in -> SKIP
+	[]
+	internal__!TID_Explore_ComputeoutputsToReady -> SKIP
+	[]
+	deactivateExplore__!TID_Explore_ReadyToCleanup.in -> SKIP
+	[]
+	internal__!TID_Explore_CleanupToDeactivated -> SKIP
+	[]
+	exploreObstacleDistance__!TID_Explore_ReadyReceiveobstacleDistance.in?obstacleDistance -> SKIP
+	[]
+	exploreMaxSpeedParam__!TID_Explore_InitialiseReceivemaxSpeedParam.in?maxSpeedParam -> SKIP
+	[]
+	exploreMaxSpeedParam__!TID_Explore_DeactivatedReceivemaxSpeedParam.in?maxSpeedParam -> SKIP
+	[]
+	exploreMaxSpeedParam__!TID_Explore_ReadyReceivemaxSpeedParam.in?maxSpeedParam -> SKIP
+	[]
+	exploreSafetyDistanceParam__!TID_Explore_InitialiseReceivesafetyDistanceParam.in?safetyDistanceParam -> SKIP
+	[]
+	exploreSafetyDistanceParam__!TID_Explore_DeactivatedReceivesafetyDistanceParam.in?safetyDistanceParam -> SKIP
+	[]
+	exploreSafetyDistanceParam__!TID_Explore_ReadyReceivesafetyDistanceParam.in?safetyDistanceParam -> SKIP
+	[]
+	explorePriorityParam__!TID_Explore_InitialiseReceivePriorityParam.in?PriorityParam -> SKIP
+	[]
+	explorePriorityParam__!TID_Explore_DeactivatedReceivePriorityParam.in?PriorityParam -> SKIP
+	[]
+	explorePriorityParam__!TID_Explore_ReadyReceivePriorityParam.in?PriorityParam -> SKIP[]
+	set_maxSpeedParam?x__ -> SKIP[]
+	set_safetyDistanceParam?x__ -> SKIP[]
+	set_PriorityParam?x__ -> SKIP[]
+	set_obstacleDistance?x__ -> SKIP[]
+	set_vOut?x__ -> SKIP[]
+	set_PriorityParamInitialised?x__ -> SKIP[]
+	set_maxSpeedParamInitialised?x__ -> SKIP[]
+	set_safetyDistanceParamInitialised?x__ -> SKIP[]
+	set_nextMotorsVelocity?x__ -> SKIP)
+	
+	MemoryTransitions_Explore(id__, const_Control_CSkill_Explore_Explore_ZERO_SPEED) = (getV_maxSpeedParam?maxSpeedParam ->
+	getV_safetyDistanceParam?safetyDistanceParam ->
+	getV_PriorityParam?PriorityParam ->
+	getV_obstacleDistance?obstacleDistance ->
+	getV_vOut?vOut ->
+	getV_PriorityParamInitialised?PriorityParamInitialised ->
+	getV_maxSpeedParamInitialised?maxSpeedParamInitialised ->
+	getV_safetyDistanceParamInitialised?safetyDistanceParamInitialised ->
+	getV_nextMotorsVelocity?nextMotorsVelocity ->
+	MemoryTransitions(id__, maxSpeedParam
+				, safetyDistanceParam
+				, PriorityParam
+				, obstacleDistance
+				, vOut
+				, PriorityParamInitialised
+				, maxSpeedParamInitialised
+				, safetyDistanceParamInitialised
+				, nextMotorsVelocity
+				,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED); MemoryTransitions_Explore(id__, const_Control_CSkill_Explore_Explore_ZERO_SPEED))			
+	
+	-- synchronisation, hiding and process sets 
+	MemoryVariablesProcesses_Explore = Union(
+		{
+			{
+				(Memory_maxSpeedParam(0),{|get_maxSpeedParam,exploreMaxSpeedParam__.TID_Explore_InitialiseReceivemaxSpeedParam,exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,set_maxSpeedParam,exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,getV_maxSpeedParam|}),
+				(Memory_safetyDistanceParam(0),{|set_safetyDistanceParam,exploreSafetyDistanceParam__.TID_Explore_InitialiseReceivesafetyDistanceParam,exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,get_safetyDistanceParam,getV_safetyDistanceParam|}),
+				(Memory_PriorityParam(0),{|set_PriorityParam,explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam,getV_PriorityParam,get_PriorityParam,explorePriorityParam__.TID_Explore_InitialiseReceivePriorityParam|}),
+				(Memory_obstacleDistance(0),{|set_obstacleDistance,getV_obstacleDistance,get_obstacleDistance,exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance|}),
+				(Memory_vOut((0,0)),{|get_vOut,getV_vOut,set_vOut|}),
+				(Memory_PriorityParamInitialised(false),{|get_PriorityParamInitialised,getV_PriorityParamInitialised,set_PriorityParamInitialised|}),
+				(Memory_maxSpeedParamInitialised(false),{|getV_maxSpeedParamInitialised,get_maxSpeedParamInitialised,set_maxSpeedParamInitialised|}),
+				(Memory_safetyDistanceParamInitialised(false),{|getV_safetyDistanceParamInitialised,get_safetyDistanceParamInitialised,set_safetyDistanceParamInitialised|}),
+				(Memory_nextMotorsVelocity((0,0)),{|get_nextMotorsVelocity,set_nextMotorsVelocity,getV_nextMotorsVelocity|})
+			}
+		}
+	)
+	
+	MemoryVariablesSyncSet = Union({
+		{|
+			set_safetyDistanceParam,
+			set_nextMotorsVelocity,
+			getV_nextMotorsVelocity,
+			exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+			getV_maxSpeedParam,
+			explorePriorityParam__.TID_Explore_InitialiseReceivePriorityParam,
+			set_maxSpeedParamInitialised,
+			exploreMaxSpeedParam__.TID_Explore_InitialiseReceivemaxSpeedParam,
+			set_vOut,
+			getV_PriorityParam,
+			getV_PriorityParamInitialised,
+			exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+			set_maxSpeedParam,
+			set_safetyDistanceParamInitialised,
+			getV_obstacleDistance,
+			getV_maxSpeedParamInitialised,
+			getV_safetyDistanceParamInitialised,
+			set_PriorityParam,
+			getV_vOut,
+			exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+			exploreSafetyDistanceParam__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+			explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,
+			explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam,
+			set_obstacleDistance,
+			exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+			set_PriorityParamInitialised,
+			getV_safetyDistanceParam,
+			exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance
+		|}	
+	})
+	
+	MemoryVariablesHideSet = Union({
+		{|
+			getV_safetyDistanceParamInitialised,
+			getV_nextMotorsVelocity,
+			getV_vOut,
+			getV_PriorityParam,
+			getV_obstacleDistance,
+			getV_PriorityParamInitialised,
+			getV_safetyDistanceParam,
+			getV_maxSpeedParamInitialised,
+			getV_maxSpeedParam
+		|}
+	})
+	
+	-- combined individual memory processes
+	MemoryVariables = ||| (P, alpha) : MemoryVariablesProcesses_Explore @ P
+	
+	-- complete memory process	
+	MemoryN(id__, const_Control_CSkill_Explore_Explore_ZERO_SPEED) = sbisim(diamond((sbisim(diamond(MemoryVariables)) [| MemoryVariablesSyncSet |] sbisim(diamond(MemoryTransitions_Explore(id__, const_Control_CSkill_Explore_Explore_ZERO_SPEED)))) \ MemoryVariablesHideSet))
+	
+	-- optimised memory
+	-- Sets of named elements identified according to transition conditions:
+	-- {}
+	-- {safetyDistanceParamInitialised,maxSpeedParamInitialised,PriorityParamInitialised}
+	-- Summary of all identified named elements:
+	-- {
+	-- safetyDistanceParamInitialised
+	-- obstacleDistance
+	-- maxSpeedParamInitialised
+	-- PriorityParamInitialised
+	-- nextMotorsVelocity
+	-- vOut
+	-- PriorityParam
+	-- maxSpeedParam
+	-- safetyDistanceParam
+	-- }
+	
+	-- Allocation plan:
+	-- 0:{}
+	--	=> {
+	--		TID_Explore_DeactivatedToStartup,
+	--		TID_Explore_ReadyToComputeoutputs,
+	--		TID_Explore_DeactivatedReceivemaxSpeedParam,
+	--		TID_Explore_StartupToReady,
+	--		TID_Explore_InitialiseReceivemaxSpeedParam,
+	--		TID_Explore_ReadyReceivesafetyDistanceParam,
+	--		TID_Explore_DeactivatedReceivesafetyDistanceParam,
+	--		TID_Explore_ReadyReceivePriorityParam,
+	--		TID_Explore_InitialiseReceivePriorityParam,
+	--		TID_Explore_ReadyToCleanup,
+	--		TID_Explore_ComputeoutputsToReady,
+	--		TID_Explore_InitialiseReceivesafetyDistanceParam,
+	--		TID_Explore_InitialToInitialise,
+	--		TID_Explore_DeactivatedReceivePriorityParam,
+	--		TID_Explore_ReadyReceivemaxSpeedParam,
+	--		TID_Explore_ReadyReceiveobstacleDistance,
+	--		TID_Explore_CleanupToDeactivated}
+	-- 1:{safetyDistanceParamInitialised,maxSpeedParamInitialised,PriorityParamInitialised}
+	--	=> {
+	--		TID_Explore_InitialiseToDeactivated}
+	
+	-- Memory transition processes
+	MemoryTransitions_opt_0(id__) =
+	(
+		let
+			Update = Current(id__)
+			Current(id__)
+			 	   = 
+			 	   activateExplore__!TID_Explore_DeactivatedToStartup.in -> Update
+			 	   []
+			 	   executeExplore__!TID_Explore_ReadyToComputeoutputs.in -> Update
+			 	   []
+			 	   exploreMaxSpeedParam__!TID_Explore_DeactivatedReceivemaxSpeedParam.in?maxSpeedParam -> Update
+			 	   []
+			 	   internal__!TID_Explore_StartupToReady -> Update
+			 	   []
+			 	   exploreMaxSpeedParam__!TID_Explore_InitialiseReceivemaxSpeedParam.in?maxSpeedParam -> Update
+			 	   []
+			 	   exploreSafetyDistanceParam__!TID_Explore_ReadyReceivesafetyDistanceParam.in?safetyDistanceParam -> Update
+			 	   []
+			 	   exploreSafetyDistanceParam__!TID_Explore_DeactivatedReceivesafetyDistanceParam.in?safetyDistanceParam -> Update
+			 	   []
+			 	   explorePriorityParam__!TID_Explore_ReadyReceivePriorityParam.in?PriorityParam -> Update
+			 	   []
+			 	   explorePriorityParam__!TID_Explore_InitialiseReceivePriorityParam.in?PriorityParam -> Update
+			 	   []
+			 	   deactivateExplore__!TID_Explore_ReadyToCleanup.in -> Update
+			 	   []
+			 	   internal__!TID_Explore_ComputeoutputsToReady -> Update
+			 	   []
+			 	   exploreSafetyDistanceParam__!TID_Explore_InitialiseReceivesafetyDistanceParam.in?safetyDistanceParam -> Update
+			 	   []
+			 	   internal__!TID_Explore_InitialToInitialise -> Update
+			 	   []
+			 	   explorePriorityParam__!TID_Explore_DeactivatedReceivePriorityParam.in?PriorityParam -> Update
+			 	   []
+			 	   exploreMaxSpeedParam__!TID_Explore_ReadyReceivemaxSpeedParam.in?maxSpeedParam -> Update
+			 	   []
+			 	   exploreObstacleDistance__!TID_Explore_ReadyReceiveobstacleDistance.in?obstacleDistance -> Update
+			 	   []
+			 	   internal__!TID_Explore_CleanupToDeactivated -> Update
+		within
+			Update
+	)
+	MemoryTransitions_opt_1(id__) =
+	(
+		let
+			Update = 
+			get_safetyDistanceParamInitialised?safetyDistanceParamInitialised ->
+			get_maxSpeedParamInitialised?maxSpeedParamInitialised ->
+			get_PriorityParamInitialised?PriorityParamInitialised ->
+			Current(id__,
+				 safetyDistanceParamInitialised,
+				 maxSpeedParamInitialised,
+				 PriorityParamInitialised)
+			Current(id__,
+				 safetyDistanceParamInitialised,
+				 maxSpeedParamInitialised,
+				 PriorityParamInitialised)
+			 	   = 
+			 	   (((safetyDistanceParamInitialised and PriorityParamInitialised) and maxSpeedParamInitialised))&(internal__!TID_Explore_InitialiseToDeactivated -> Update)
+			 	   	 
+			 	   	 []
+			 	   	 set_safetyDistanceParamInitialised?x__ -> Update
+			 	   	 []
+			 	   	 
+			 	   	 set_maxSpeedParamInitialised?x__ -> Update
+			 	   	 []
+			 	   	 
+			 	   	 set_PriorityParamInitialised?x__ -> Update
+		within
+			Update
+	)
+	
+	-- Memory cell processes
+	Memory_opt_safetyDistanceParamInitialised(x__) = ( 
+		get_safetyDistanceParamInitialised!x__ -> Memory_opt_safetyDistanceParamInitialised(x__)
+		[]
+		set_safetyDistanceParamInitialised?x__ -> Memory_opt_safetyDistanceParamInitialised(x__)
+	)
+	Memory_opt_obstacleDistance(x__) = ( 
+		get_obstacleDistance!x__ -> Memory_opt_obstacleDistance(x__)
+		[]
+		set_obstacleDistance?x__ -> Memory_opt_obstacleDistance(x__)
+	)
+	Memory_opt_maxSpeedParamInitialised(x__) = ( 
+		get_maxSpeedParamInitialised!x__ -> Memory_opt_maxSpeedParamInitialised(x__)
+		[]
+		set_maxSpeedParamInitialised?x__ -> Memory_opt_maxSpeedParamInitialised(x__)
+	)
+	Memory_opt_PriorityParamInitialised(x__) = ( 
+		get_PriorityParamInitialised!x__ -> Memory_opt_PriorityParamInitialised(x__)
+		[]
+		set_PriorityParamInitialised?x__ -> Memory_opt_PriorityParamInitialised(x__)
+	)
+	Memory_opt_nextMotorsVelocity(x__) = ( 
+		get_nextMotorsVelocity!x__ -> Memory_opt_nextMotorsVelocity(x__)
+		[]
+		set_nextMotorsVelocity?x__ -> Memory_opt_nextMotorsVelocity(x__)
+	)
+	Memory_opt_vOut(x__) = ( 
+		get_vOut!x__ -> Memory_opt_vOut(x__)
+		[]
+		set_vOut?x__ -> Memory_opt_vOut(x__)
+	)
+	Memory_opt_PriorityParam(x__) = ( 
+		get_PriorityParam!x__ -> Memory_opt_PriorityParam(x__)
+		[]
+		set_PriorityParam?x__ -> Memory_opt_PriorityParam(x__)
+	)
+	Memory_opt_maxSpeedParam(x__) = ( 
+		get_maxSpeedParam!x__ -> Memory_opt_maxSpeedParam(x__)
+		[]
+		set_maxSpeedParam?x__ -> Memory_opt_maxSpeedParam(x__)
+	)
+	Memory_opt_safetyDistanceParam(x__) = ( 
+		get_safetyDistanceParam!x__ -> Memory_opt_safetyDistanceParam(x__)
+		[]
+		set_safetyDistanceParam?x__ -> Memory_opt_safetyDistanceParam(x__)
+	)
+	
+	-- Composition of memory, StateMachine and Memory transition processes
+	
+	MemorySTM_opt(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) =
+		dbisim(
+		  sbisim(Memory_opt_safetyDistanceParamInitialised(false)
+		      	[| {|get_safetyDistanceParamInitialised,set_safetyDistanceParamInitialised|} |] 
+		      	dbisim(
+		      	  sbisim(Memory_opt_maxSpeedParamInitialised(false)
+		      	      	[| {|set_maxSpeedParamInitialised,get_maxSpeedParamInitialised|} |] 
+		      	      	dbisim(
+		      	      	  sbisim(Memory_opt_PriorityParamInitialised(false)
+		      	      	      	[| {|get_PriorityParamInitialised,set_PriorityParamInitialised|} |] 
+		      	      	      	sbisim(	
+		      	      	      	  dbisim(
+		      	      	      	    sbisim(sbisim(	
+		      	      	      	      dbisim(
+		      	      	      	        sbisim(dbisim(sbisim(Memory_opt_obstacleDistance(0)
+		      	      	      	              	[| {|set_obstacleDistance,get_obstacleDistance|} |] 
+		      	      	      	              	dbisim(sbisim(Memory_opt_nextMotorsVelocity((0,0))
+		      	      	      	              	      	[| {|set_nextMotorsVelocity,get_nextMotorsVelocity|} |] 
+		      	      	      	              	      	dbisim(sbisim(Memory_opt_vOut((0,0))
+		      	      	      	              	      	      	[| {|get_vOut,set_vOut|} |] 
+		      	      	      	              	      	      	dbisim(sbisim(Memory_opt_PriorityParam(0)
+		      	      	      	              	      	      	      	[| {|set_PriorityParam,get_PriorityParam|} |] 
+		      	      	      	              	      	      	      	dbisim(sbisim(Memory_opt_maxSpeedParam(0)
+		      	      	      	              	      	      	      	      	[| {|get_maxSpeedParam,set_maxSpeedParam|} |] 
+		      	      	      	              	      	      	      	      	dbisim(sbisim(Memory_opt_safetyDistanceParam(0)
+		      	      	      	              	      	      	      	      	      	[| {|set_safetyDistanceParam,get_safetyDistanceParam|} |] 
+		      	      	      	              	      	      	      	      	      	STM_core(id__,
+		      	      	      	              	      	      	      	      	      			    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+		      	      	      	              	      	      	      	      	      	)\ {|set_safetyDistanceParam,get_safetyDistanceParam|}
+		      	      	      	              	      	      	      	      	      )
+		      	      	      	              	      	      	      	      	)\ {|get_maxSpeedParam,set_maxSpeedParam|}
+		      	      	      	              	      	      	      	      )
+		      	      	      	              	      	      	      	)\ {|set_PriorityParam,get_PriorityParam|}
+		      	      	      	              	      	      	      )
+		      	      	      	              	      	      	)\ {|get_vOut,set_vOut|}
+		      	      	      	              	      	      )
+		      	      	      	              	      	)\ {|set_nextMotorsVelocity,get_nextMotorsVelocity|}
+		      	      	      	              	      )
+		      	      	      	              	)\ {|set_obstacleDistance,get_obstacleDistance|}
+		      	      	      	              )
+		      	      	      	          	  [| {|internal__.TID_Explore_ComputeoutputsToReady,internal__.TID_Explore_StartupToReady,deactivateExplore__.TID_Explore_ReadyToCleanup,internal__.TID_Explore_InitialToInitialise,exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,explorePriorityParam__.TID_Explore_InitialiseReceivePriorityParam,activateExplore__.TID_Explore_DeactivatedToStartup,exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,exploreMaxSpeedParam__.TID_Explore_InitialiseReceivemaxSpeedParam,exploreSafetyDistanceParam__.TID_Explore_InitialiseReceivesafetyDistanceParam,explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam,explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,executeExplore__.TID_Explore_ReadyToComputeoutputs,exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance,internal__.TID_Explore_CleanupToDeactivated|} |]
+		      	      	      	          	  MemoryTransitions_opt_0(id__)
+		      	      	      	          	  )\{|internal__.TID_Explore_ComputeoutputsToReady,internal__.TID_Explore_StartupToReady,internal__.TID_Explore_InitialToInitialise,internal__.TID_Explore_CleanupToDeactivated|})
+		      	      	      	          )
+		      	      	      	      	  [| {|internal__.TID_Explore_InitialiseToDeactivated,set_safetyDistanceParamInitialised,set_PriorityParamInitialised,set_maxSpeedParamInitialised|} |]
+		      	      	      	      	  MemoryTransitions_opt_1(id__)
+		      	      	      	      	  )\{|internal__.TID_Explore_InitialiseToDeactivated|})
+		      	      	      	      )
+		      	      	      	) \ {|get_PriorityParamInitialised,set_PriorityParamInitialised|}
+		      	      	      )
+		      	      	) \ {|set_maxSpeedParamInitialised,get_maxSpeedParamInitialised|}
+		      	      )
+		      	) \ {|get_safetyDistanceParamInitialised,set_safetyDistanceParamInitialised|}
+		      )
+	
+	-- main process
+	
+	MachineMemorySyncSet = Union({
+		union(
+			union(
+				{|get_maxSpeedParam,set_maxSpeedParam,
+				get_safetyDistanceParam,set_safetyDistanceParam,
+				get_PriorityParam,set_PriorityParam,
+				get_obstacleDistance,set_obstacleDistance,
+				get_vOut,set_vOut,
+				get_PriorityParamInitialised,set_PriorityParamInitialised,
+				get_maxSpeedParamInitialised,set_maxSpeedParamInitialised,
+				get_safetyDistanceParamInitialised,set_safetyDistanceParamInitialised,
+				get_nextMotorsVelocity,set_nextMotorsVelocity|},
+				{||}
+			)
+				
+			,
+			{|internal__.TID_Explore_InitialToInitialise,
+			internal__.TID_Explore_InitialiseToDeactivated,
+			activateExplore__.TID_Explore_DeactivatedToStartup,
+			internal__.TID_Explore_StartupToReady,
+			executeExplore__.TID_Explore_ReadyToComputeoutputs,
+			internal__.TID_Explore_ComputeoutputsToReady,
+			deactivateExplore__.TID_Explore_ReadyToCleanup,
+			internal__.TID_Explore_CleanupToDeactivated,
+			exploreObstacleDistance__.TID_Explore_ReadyReceiveobstacleDistance,
+			exploreMaxSpeedParam__.TID_Explore_InitialiseReceivemaxSpeedParam,
+			exploreMaxSpeedParam__.TID_Explore_DeactivatedReceivemaxSpeedParam,
+			exploreMaxSpeedParam__.TID_Explore_ReadyReceivemaxSpeedParam,
+			exploreSafetyDistanceParam__.TID_Explore_InitialiseReceivesafetyDistanceParam,
+			exploreSafetyDistanceParam__.TID_Explore_DeactivatedReceivesafetyDistanceParam,
+			exploreSafetyDistanceParam__.TID_Explore_ReadyReceivesafetyDistanceParam,
+			explorePriorityParam__.TID_Explore_InitialiseReceivePriorityParam,
+			explorePriorityParam__.TID_Explore_DeactivatedReceivePriorityParam,
+			explorePriorityParam__.TID_Explore_ReadyReceivePriorityParam|}
+		)
+	})
+	
+	MachineMemoryHidingSet = Union({
+		union(
+			{|get_maxSpeedParam,set_maxSpeedParam,
+			get_safetyDistanceParam,set_safetyDistanceParam,
+			get_PriorityParam,set_PriorityParam,
+			get_obstacleDistance,set_obstacleDistance,
+			get_vOut,set_vOut,
+			get_PriorityParamInitialised,set_PriorityParamInitialised,
+			get_maxSpeedParamInitialised,set_maxSpeedParamInitialised,
+			get_safetyDistanceParamInitialised,set_safetyDistanceParamInitialised,
+			get_nextMotorsVelocity,set_nextMotorsVelocity|},
+			{||}
+		)
+	})
+	
+	MachineInternalEvents = {|
+		internal__
+	|}
+	
+	AUX(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = (
+		(
+			STM(id__,
+					    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+				[|MachineMemorySyncSet|]
+			sbisim(diamond(MemoryN(id__, const_Control_CSkill_Explore_Explore_ZERO_SPEED)))
+		)[[
+			activateExplore__.x____ <- activateExplore,
+			deactivateExplore__.x____ <- deactivateExplore,
+			executeExplore__.x____ <- executeExplore,
+			exploreMaxSpeedParam__.x____ <- exploreMaxSpeedParam,
+			exploreSafetyDistanceParam__.x____ <- exploreSafetyDistanceParam,
+			explorePriorityParam__.x____ <- explorePriorityParam,
+			exploreObstacleDistance__.x____ <- exploreObstacleDistance,
+			exploreVOut__.x____ <- exploreVOut,
+			completeExplore__.x____ <- completeExplore
+			| x____ <- TIDS
+		]]
+		\MachineMemoryHidingSet
+	)
+	[|{|terminate|}|>SKIP\MachineInternalEvents
+	
+	
+	STM_core(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = 
+		sbisim(diamond(STM(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED)))
+		
+	AUX_opt(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = 
+		(MemorySTM_opt(id__,
+				    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+		)[[
+			activateExplore__.x____ <- activateExplore,
+			deactivateExplore__.x____ <- deactivateExplore,
+			executeExplore__.x____ <- executeExplore,
+			exploreMaxSpeedParam__.x____ <- exploreMaxSpeedParam,
+			exploreSafetyDistanceParam__.x____ <- exploreSafetyDistanceParam,
+			explorePriorityParam__.x____ <- explorePriorityParam,
+			exploreObstacleDistance__.x____ <- exploreObstacleDistance,
+			exploreVOut__.x____ <- exploreVOut,
+			completeExplore__.x____ <- completeExplore
+			| x____ <- TIDS
+		]]
+		[|{|terminate|}|>SKIP\MachineInternalEvents
+
+	-- definition of the behaviour of state machines (default, optimised, visible, visible and optimised)
+	transparent diamond
+	transparent sbisim
+	transparent dbisim
+	transparent chase
+			
+	FVS__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = AUX_opt(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED)
+	Dunopt__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = AUX(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) \ internal_events
+	D__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = AUX_opt(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) \ internal_events
+	O__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = sbisim(diamond(D__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED)))
+	VS__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = ShowV(FVS__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED))
+	VS_O__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = sbisim(diamond(VS__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED)))
+	HEXT__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) = O__(id__,
+			    const_Control_CSkill_Explore_Explore_ZERO_SPEED) [|shared_variable_events|] SKIP	
+endmodule

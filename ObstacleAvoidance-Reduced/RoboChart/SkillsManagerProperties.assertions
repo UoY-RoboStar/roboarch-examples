@@ -1,0 +1,143 @@
+csp SkillsManagerEvents csp-begin
+
+	handlingEvents = Union({ {| Control_SkillsManager::SkillsManager::activate.in, 
+		                      Control_SkillsManager::SkillsManager::deactivate.in,
+		                      Control_SkillsManager::SkillsManager::getActiveSkills.in,
+		                      Control_SkillsManager::SkillsManager::initiateEventMonitor.in,
+		                      Control_SkillsManager::SkillsManager::stopEventMonitor.in 
+		                   |},
+		                    skillParameterRequestEvents,
+		                    skillValueRequestEvents
+	})
+	
+	
+	
+	skillParameterRequestEvents = {| Control_SkillsManager::SkillsManager::getExploreMaxSpeedParameter.in, 
+		                            Control_SkillsManager::SkillsManager::getExplorePriorityParameter.in,
+		                            Control_SkillsManager::SkillsManager::getMovePriorityParameter.in,
+
+		                            
+							        Control_SkillsManager::SkillsManager::setExploreMaxSpeedParameter.in,                                                                                                   
+									Control_SkillsManager::SkillsManager::setExplorePriorityParameter.in,                                                                                                                                                                                   
+									Control_SkillsManager::SkillsManager::setMovePriorityParameter.in                                                                                                  
+
+		                                                                                                  
+									|}	
+	
+	skillValueRequestEvents = {|
+		Control_SkillsManager::SkillsManager::getExploreVOutValue.in
+	  |}
+	
+	responseEvents = {| Control_SkillsManager::SkillsManager::activeSkills.out, 
+		               Control_SkillsManager::SkillsManager::eventReply.out,
+		               
+		               Control_SkillsManager::SkillsManager::explorePriorityParameter.out,
+		               Control_SkillsManager::SkillsManager::movePriorityParameter.out,
+		               Control_SkillsManager::SkillsManager::exploreMaxSpeedParameter.out,
+		               
+		               Control_SkillsManager::SkillsManager::exploreVOutValue.out
+		               
+		              |}
+
+	handlingResponseEvents = diff( responseEvents, {|Control_SkillsManager::SkillsManager::eventReply.out|} )
+	
+	handlingOutputEvents = union( dskillMoveParameters, cSkillExploreParameters ) 
+	
+	dskillMoveActuationCommands = {| Control_SkillsManager::SkillsManager::moveVIn.out |}
+	--dskillMoveSensorData = {}
+	dskillMoveParameters = {| Control_SkillsManager::SkillsManager::movePriorityParam.out |}
+	
+	
+	--cskillExploreInputs = {}
+	cskillExploreOutputs = {| Control_SkillsManager::SkillsManager::exploreVOut.in  |}
+	cSkillExploreParameters = {| Control_SkillsManager::SkillsManager::explorePriorityParam.out, 
+		                         Control_SkillsManager::SkillsManager::exploreMaxSpeedParam.out |}
+	
+	skillControlEvents = Union( { skillActivateEvents, skillDeactivateEvents, skillExecuteEvents, skillCompleteEvents 	} )
+
+	skillActivateEvents = {| Control_SkillsManager::SkillsManager::activateExplore.out, Control_SkillsManager::SkillsManager::activateMove.out |}
+	skillDeactivateEvents = {| Control_SkillsManager::SkillsManager::deactivateExplore.out, Control_SkillsManager::SkillsManager::deactivateMove.out |}
+	skillExecuteEvents = {| Control_SkillsManager::SkillsManager::executeExplore.out, Control_SkillsManager::SkillsManager::executeMove.out |}
+	skillCompleteEvents = {| Control_SkillsManager::SkillsManager::completeExplore.in, Control_SkillsManager::SkillsManager::completeMove.in |}
+	
+
+			
+	allSkillsManagerEvents = Union({ handlingEvents, responseEvents, dskillMoveParameters, dskillMoveActuationCommands, cSkillExploreParameters, cskillExploreOutputs, skillControlEvents })
+	
+csp-end
+
+
+
+csp EBSM1 csp-begin
+
+    EBSM1 = let	
+		PRE = Control_SkillsManager::SkillsManager::getActiveSkills.in -> CON
+			  |~|
+			( |~| ev: diff( allSkillsManagerEvents, {|Control_SkillsManager::SkillsManager::getActiveSkills.in|} ) @ ev -> PRE )
+			  
+		CON = |~| ev: {|Control_SkillsManager::SkillsManager::activeSkills.out|} @ ev -> POS
+		
+		POS = CHAOS(allSkillsManagerEvents)
+	within PRE
+csp-end
+
+assertion EBSM1: Control::SkillsManager::SkillsManager refines EBSM1 in the failures model
+
+
+
+csp EBSM2_ExplorePriority csp-begin
+
+	EBSM2_ExplorePriority = let
+		PRE = Control_SkillsManager::SkillsManager::getExplorePriorityParameter.in -> CON
+			  |~|
+			( |~| ev: diff( allSkillsManagerEvents, {|Control_SkillsManager::SkillsManager::getExplorePriorityParameter.in|} ) @ ev -> PRE )
+		
+		CON = |~| ev: {|Control_SkillsManager::SkillsManager::explorePriorityParameter.out|} @ ev -> POS
+		POS = CHAOS(allSkillsManagerEvents)
+	within PRE
+csp-end
+
+assertion EBSM2_ExplorePriority: Control::SkillsManager::SkillsManager refines EBSM2_ExplorePriority in the failures model
+
+
+csp EBSM3_ExplorePriority csp-begin
+
+ EBSM3_ExplorePriority = let
+    PRE =  Control_SkillsManager::SkillsManager::setExplorePriorityParameter.in?v -> CON(v)
+           |~|
+         ( |~| ev: diff( allSkillsManagerEvents, {|Control_SkillsManager::SkillsManager::setExplorePriorityParameter.in|} ) @ ev -> PRE )
+	 
+    CON(v) = Control_SkillsManager::SkillsManager::explorePriorityParam.out!v -> POS
+	
+    POS = CHAOS(allSkillsManagerEvents)
+	 	 
+ within PRE
+csp-end
+
+assertion EBSM3_ExplorePriority: Control::SkillsManager::SkillsManager refines EBSM3_ExplorePriority in the failures model
+
+
+csp EBSM4 csp-begin
+
+ EBSM4 = let
+    PRE =  [] ev : handlingEvents @ ( ev -> CON )
+           |~|
+         ( |~| ev: diff( allSkillsManagerEvents, 
+                         union(handlingEvents, handlingResponseEvents) 
+                        ) @ ( ev -> PRE ) )
+	 
+    CON = [] ev: handlingEvents @ (ev -> CON)
+          |~|
+        ( |~| ev: handlingResponseEvents @ ev -> CON )
+          []
+        ( |~| ev: diff( allSkillsManagerEvents, 
+                        union(handlingEvents, handlingResponseEvents) 
+                       ) @ ev -> PRE )
+                       	 	 
+ within PRE
+csp-end
+
+assertion EBSM4: Control::SkillsManager::SkillsManager refines EBSM4 in the failures model
+
+
+

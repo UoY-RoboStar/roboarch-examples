@@ -1,0 +1,125 @@
+package Control::DSkill::Move
+
+import Types::* 
+
+
+
+
+
+
+stm Move { 
+	
+	
+	uses IMove
+
+	var PriorityParam : nat , vIn : Velocities , PriorityParamInitialised : boolean = 	false  
+	 
+
+	initial Initial
+
+	 state Initialise { 
+	}
+
+	 state Deactivated { 
+	}
+
+	 state Startup { 
+	}
+
+	 state Ready { 
+	}
+
+	 state HandleActuationCommands {
+		entry platformMove ! vIn 
+	
+	}
+
+	 state HandleSensorData { 
+	}
+
+	 state Cleanup { 
+	}
+
+	transition InitialToInitialise {
+		from Initial
+		to Initialise
+	}
+
+	transition InitialiseToDeactivated {
+		from Initialise
+		to Deactivated
+		condition 	PriorityParamInitialised  
+	
+	}
+
+	transition DeactivatedToStartup {
+		from Deactivated
+		to Startup
+		trigger activateMove 
+	}
+
+	transition StartupToReady {
+		from Startup
+		to Ready
+	}
+
+	transition ReadyToHandleActuationCommands {
+		from Ready
+		to HandleActuationCommands
+		trigger executeMove 
+	}
+
+	transition HandleActuationCommandsToHandleSensorData {
+		from HandleActuationCommands
+		to HandleSensorData
+	}
+
+	transition HandleSensorDataToReady {
+		from HandleSensorData
+		to Ready
+	  	action completeMove 
+	}
+
+	transition ReadyToCleanup {
+		from Ready
+		to Cleanup
+		trigger deactivateMove 
+	}
+
+	transition CleanupToDeactivated {
+		from Cleanup
+		to Deactivated
+	}
+
+	transition ReadyReceivevIn {
+		from Ready
+		to Ready
+		trigger  
+	moveVIn ? vIn
+	}
+
+	transition InitialiseReceivePriorityParam {
+		from Initialise
+		to Initialise
+		trigger movePriorityParam ? PriorityParam 
+	  	action PriorityParamInitialised = 	true  
+	
+	}
+
+	transition DeactivatedReceivePriorityParam {
+		from Deactivated
+		to Deactivated
+		trigger movePriorityParam ? PriorityParam 
+	}
+
+	transition ReadyReceivePriorityParam {
+		from Ready
+		to Ready
+		trigger movePriorityParam ? PriorityParam 
+	}
+
+	 event platformMove: Velocities
+} 
+
+
+

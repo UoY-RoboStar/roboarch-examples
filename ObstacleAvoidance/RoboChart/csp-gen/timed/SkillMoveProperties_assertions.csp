@@ -1,0 +1,133 @@
+-- EBDS1 - refinement
+assert EBDS1 ||| RUN({tock})  [F= let 
+	id__ = 0
+	
+	
+	
+within
+	Control_DSkill_Move::Move::D__(id__)
+
+-- EBDS2 - refinement
+assert EBDS2 ||| RUN({tock})  [F= let 
+	id__ = 0
+	
+	
+	
+within
+	Control_DSkill_Move::Move::D__(id__)
+
+-- EBDS4 - refinement
+assert EBDS4 ||| RUN({tock})  [F= let 
+	id__ = 0
+	
+	
+	
+within
+	Control_DSkill_Move::Move::D__(id__)
+
+include "defs/timed_definitions.csp"
+include "defs/core_defs.csp"
+include "defs/Control_DSkill_Move_defs.csp"
+include "defs/Platform_defs.csp"
+include "defs/Executive_defs.csp"
+include "defs/sequence_toolkit_defs.csp"
+include "defs/ObstacleAvoidance_defs.csp"
+include "defs/Types_defs.csp"
+include "defs/Control_defs.csp"
+include "defs/Control_CSkill_Explore_defs.csp"
+include "defs/Control_DSkill_Proximity_defs.csp"
+include "defs/function_toolkit_defs.csp"
+include "defs/robochart_defs.csp"
+include "defs/Control_DSkill_Move.csp"
+include "defs/set_toolkit_defs.csp"
+include "instantiations.csp"
+include "defs/Control_SkillsManager_defs.csp"
+include "defs/relation_toolkit_defs.csp"
+
+channel r__
+
+skillControlEvents = { 
+		Control_DSkill_Move::Move::activateMove.in, Control_DSkill_Move::Move::deactivateMove.in, 
+		Control_DSkill_Move::Move::executeMove.in, Control_DSkill_Move::Move::completeMove.out
+	}
+	
+	skillParameterEvents = {|Control_DSkill_Move::Move::movePriorityParam.in|}
+	
+	skillActuationCommandEvents = {|Control_DSkill_Move::Move::moveVIn.in|}
+		
+	skillSensorDataEvents = {}
+	
+	
+	skillPlatformSensingEvents = {}
+		
+	skillPlatformActuationEvents = {|Control_DSkill_Move::Move::platformMove.out|}
+	
+
+	allSkillEvents = Union({ skillControlEvents, skillParameterEvents, skillActuationCommandEvents, skillSensorDataEvents, skillPlatformActuationEvents, skillPlatformSensingEvents })
+
+EBDS1 = let	
+		PRE = |~| ev: diff( allSkillEvents, { Control_DSkill_Move::Move::executeMove.in }) @ ev -> PRE
+			  |~| Control_DSkill_Move::Move::executeMove.in -> CON
+			  
+	    CON = |~| ev: union(skillPlatformActuationEvents, skillSensorDataEvents) @ ev -> CON
+		      |~|
+		      Control_DSkill_Move::Move::completeMove.out -> POS
+		    
+		POS = CHAOS( allSkillEvents )
+		     
+	within PRE
+
+EBDS2 = let
+		PRE = |~| ev: diff(allSkillEvents, { Control_DSkill_Move::Move::activateMove.in, Control_DSkill_Move::Move::completeMove.out }  ) @
+					ev -> PRE
+		      |~| 
+		      Control_DSkill_Move::Move::activateMove.in -> PRE'(<>)
+		      |~|
+		      Control_DSkill_Move::Move::completeMove.out -> PRE'(<>) 
+		
+		PRE'(ac1) = |~| ev: union(skillParameterEvents , skillPlatformSensingEvents) @
+		                              ev -> PRE'(ac1)
+		            |~| 
+		            Control_DSkill_Move::Move::moveVIn.in? ac -> PRE'(<ac>)
+					|~| 
+					Control_DSkill_Move::Move::executeMove.in -> CON(ac1)
+					|~|
+					Control_DSkill_Move::Move::deactivateMove.in -> POS
+		
+		CON(ac1) = OUT1(ac1); POS
+		
+		OUT1(ac1) = if (ac1 != <>) then 
+					   Control_DSkill_Move::Move::platformMove.out!head(ac1) -> SKIP
+					else
+					   SKIP
+		
+		POS = CHAOS( allSkillEvents )
+		
+	
+	within PRE
+
+EBDS4 = let
+		
+		PRE = |~| ev: diff(allSkillEvents, { Control_DSkill_Move::Move::activateMove.in, Control_DSkill_Move::Move::completeMove.out } ) @
+		     		ev -> PRE
+		      |~|
+		      Control_DSkill_Move::Move::activateMove.in -> PRE'
+		      |~|
+		      Control_DSkill_Move::Move::completeMove.out -> PRE'
+		     
+	    PRE' = |~| ev: union(skillParameterEvents, skillPlatformSensingEvents) @
+	    			ev -> PRE'
+	    	   [] 
+	    	   Control_DSkill_Move::Move::executeMove.in -> CON
+	    	   []
+	    	   [] ev: skillActuationCommandEvents @ ev -> POS
+	    	   []
+	    	   Control_DSkill_Move::Move::deactivateMove.in -> POS
+	    
+	    CON = --|~| ev: skillSensorDataEvents @ ev -> CON
+	     	  --|~|
+	     	  Control_DSkill_Move::Move::completeMove.out -> POS
+	     	  
+	   POS = CHAOS(allSkillEvents)
+	    	   
+	within PRE

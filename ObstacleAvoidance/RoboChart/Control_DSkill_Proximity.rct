@@ -1,0 +1,143 @@
+package Control::DSkill::Proximity
+
+import Types::* 
+
+
+
+
+
+
+stm Proximity { 
+	
+	
+	uses IProximity
+	
+	var PriorityParam : nat , gap : int , PriorityParamInitialised : boolean = 	false  
+	 , gapSenseReceived : boolean = 	false  
+	 
+
+	initial Initial
+
+	 state Initialise { 
+	}
+
+	 state Deactivated { 
+	}
+
+	 state Startup { 
+	}
+
+	 state Ready { 
+	}
+
+	 state HandleActuationCommands { 
+	}
+
+	 state HandleSensorData { 
+	}
+
+	 state Cleanup { 
+	}
+
+	transition InitialToInitialise {
+		from Initial
+		to Initialise
+	}
+
+	transition InitialiseToDeactivated {
+		from Initialise
+		to Deactivated
+		condition 	PriorityParamInitialised  
+	
+	}
+
+	transition DeactivatedToStartup {
+		from Deactivated
+		to Startup
+		trigger activateProximity 
+	}
+
+	transition StartupToReady {
+		from Startup
+		to Ready
+	}
+
+	transition ReadyToHandleActuationCommands {
+		from Ready
+		to HandleActuationCommands
+		trigger executeProximity 
+	}
+
+	transition HandleActuationCommandsToHandleSensorData {
+		from HandleActuationCommands
+		to HandleSensorData
+	}
+
+	transition HandleSensorDataToReady {
+		from HandleSensorData
+		to Ready
+		condition 	not gapSenseReceived  
+	
+	  	action completeProximity 
+	}
+
+	transition ReadyToCleanup {
+		from Ready
+		to Cleanup
+		trigger deactivateProximity 
+	}
+
+	transition CleanupToDeactivated {
+		from Cleanup
+		to Deactivated
+	}
+
+	transition ReadyReceivegap {
+		from Ready
+		to Ready
+		trigger platformProximity ? gap 
+	  	action gapSenseReceived = 	true  
+	
+	}
+
+	transition HandleSensorDataReceivegap {
+		from HandleSensorData
+		to HandleSensorData
+		condition 	gapSenseReceived  
+	
+	  	action proximityGap ! 	(| gap, PriorityParam |)   
+	 ; gapSenseReceived = 	false  
+	
+	}
+
+	transition InitialiseReceivePriorityParam {
+		from Initialise
+		to Initialise
+		trigger proximityPriorityParam ? PriorityParam 
+	  	action PriorityParamInitialised = 	true  
+	
+	}
+
+	transition DeactivatedReceivePriorityParam {
+		from Deactivated
+		to Deactivated
+		trigger proximityPriorityParam ? PriorityParam 
+	}
+
+	transition ReadyReceivePriorityParam {
+		from Ready
+		to Ready
+		trigger proximityPriorityParam ? PriorityParam 
+	}
+
+	 
+transition t0 {
+		from HandleActuationCommands
+		to Ready
+		condition not gapSenseReceived
+		action completeProximity
+	}
+	
+	event platformProximity: int
+}
+

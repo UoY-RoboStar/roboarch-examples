@@ -1,0 +1,302 @@
+package Control::SkillsManager
+
+import set_toolkit::* 
+import sequence_toolkit::* 
+import Types::* 
+import Control::DSkill::Move::* 
+import Control::CSkill::Explore::* 
+
+
+
+
+
+
+stm SkillsManager { 
+	
+	
+	uses IControl
+	uses IMove
+	uses IExplore
+	
+	
+	
+	
+	var activationRequest : Skills , cycleSkills : Seq( Skills ) , currentlyActiveSkills : Set( Skills ) , monitorRequest : Events , 
+		currentlyActiveMonitors : Set( Events ) ,  
+		newExplorevOut : boolean , newMovevIn : boolean , explorePriority : nat ,  movePriority : nat , exploremaxSpeed : real , 
+		currentExplorevOut : Velocities * nat , currentMovevIn : Velocities * nat , executingSkills : Set( Skills ) , 
+		setExecuting : Skills , monitorsToCheck : Set( Events ) 
+	
+	const REQUEST_HANDLING_DELAY : nat , ASYNCHRONOUS_SKILLS : Seq( Skills ) = < Skills :: EXPLORE > , MAX_SEQ_LENGTH : nat = 2
+	
+	clock requestHandling
+
+	state Initialise {
+		entry currentlyActiveSkills = { } ; currentlyActiveMonitors = { } ; cycleSkills = < > ; newMovevIn = false ; # requestHandling 
+	
+	}
+
+	state UpdateRecord {
+	}
+
+	initial SkillsManagerInitial
+
+	 state DoNextSkill {
+		entry executingSkills = { }
+
+		state ExecuteMove {
+			entry moveVIn ! ( currentMovevIn [ 1 ] ) ; executeMove
+		}
+		state ExecuteExplore {
+			entry executeExplore
+		}
+		initial DoNextSkillInitial
+		final DoNextSkillFinal
+		junction DoNextSkillJunctionEmptyCycleSkills
+		state Next {
+			entry setExecuting = head ( cycleSkills ) ; cycleSkills = tail ( cycleSkills )
+		}
+		transition InitialToJunctionEmptyCycleSkills {
+			from DoNextSkillInitial
+			to DoNextSkillJunctionEmptyCycleSkills
+		}
+		transition NextMoveToExecuteMove {
+			from Next
+			to ExecuteMove
+			condition setExecuting == Skills :: MOVE
+		}
+		transition NextExploreToExecuteExplore {
+			from Next
+			to ExecuteExplore
+			condition setExecuting == Skills :: EXPLORE
+		}
+		transition ExecuteExploreToJunctionEmptyCycleSkills {
+			from ExecuteExplore
+			to DoNextSkillJunctionEmptyCycleSkills
+			action executingSkills = union ( executingSkills , { Skills :: EXPLORE } )
+		}
+		transition ExecuteMoveToJunctionEmptyCycleSkills {
+			from ExecuteMove
+			to DoNextSkillJunctionEmptyCycleSkills
+			action executingSkills = union ( executingSkills , { Skills :: MOVE } )
+		}
+		transition JunctionEmptyCycleSkillToFinal {
+			from DoNextSkillJunctionEmptyCycleSkills
+			to DoNextSkillFinal
+			condition cycleSkills == < >
+		}
+		transition JunctionEmptyCycleSkillsToNext {
+			from DoNextSkillJunctionEmptyCycleSkills
+			to Next
+			condition isNonEmpty ( cycleSkills )
+		}
+	}
+
+	state HandleRequests { 
+	}
+
+	state CheckMonitors {
+	}
+
+	 
+state ExecutingSkills {
+	}
+
+	transition HandleGetParameterReceivegetMovePriorityParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger getMovePriorityParameter 
+	  	action movePriorityParameter ! movePriority  
+	 
+	}
+
+	transition HandleSetParameterReceivesetExplorePriorityParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	
+	
+	
+	setExplorePriorityParameter ? explorePriority
+		action explorePriorityParam ! explorePriority
+	}
+
+	transition ExecutingSkillsToCheckMonitors {
+		from ExecutingSkills
+		to CheckMonitors
+		condition executingSkills == { }
+		action monitorsToCheck = currentlyActiveMonitors
+	}
+
+
+
+
+	transition InitialiseToHandleValueQueries {
+		from Initialise
+		to HandleRequests
+	}
+
+
+
+	transition HandleDeactivationReceive {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	  	
+		
+		deactivate ? activationRequest
+		action currentlyActiveSkills = diff ( currentlyActiveSkills , { activationRequest } )   
+	
+	}
+	transition HandleValueQueriesReceivegetExploreVOutValue {
+		from HandleRequests
+		to HandleRequests
+		trigger getExploreVOutValue 
+	  	action exploreVOutValue ! 	( currentExplorevOut [1] )   
+	 
+	}
+	transition ExecutingSkillsReceiveCompleteExplore {
+		from ExecutingSkills
+		to ExecutingSkills
+	
+	trigger 
+		
+		completeExplore
+		action if (Skills :: EXPLORE in executingSkills ) then executingSkills = diff ( executingSkills , { Skills :: EXPLORE } ) end
+	}
+	
+	transition ExecutingSkillsReceiveCompleteMove {
+		from ExecutingSkills
+		to ExecutingSkills
+	
+	trigger 
+		
+		completeMove
+		action if (Skills :: MOVE in executingSkills ) then executingSkills = diff ( executingSkills , { Skills :: MOVE } ) end
+	}
+
+	transition HandleREquestsToJunctionEmptyCycleSkills {
+		from HandleRequests
+		to JunctionEmptyCycleSkills
+		condition 	since( requestHandling )  > REQUEST_HANDLING_DELAY  
+	
+	  	action # requestHandling ; cycleSkills = concat ( cycleSkills , ASYNCHRONOUS_SKILLS ) ; cycleSkills = filter ( cycleSkills , currentlyActiveSkills ) 
+	}
+	transition SkillsManagerInitialToInitialise {
+		from SkillsManagerInitial
+		to Initialise
+	}
+
+	transition DoNextSkillToExecutingSkills {
+		from DoNextSkill
+		to ExecutingSkills
+	condition cycleSkills == < >
+	}
+	transition HandleActivationReceive {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	  	
+		
+		activate ? activationRequest
+		action currentlyActiveSkills = union ( currentlyActiveSkills , { activationRequest } )   
+	
+	}
+
+	transition HandleActiveSkillsReceive {
+		from HandleRequests
+		to HandleRequests
+		trigger getActiveSkills 
+	  	action activeSkills ! currentlyActiveSkills  
+	 
+	}
+	transition HandleGetParameterReceivegetExploreMaxSpeedParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger getExploreMaxSpeedParameter 
+	  	action exploreMaxSpeedParameter ! exploremaxSpeed  
+	 
+	}
+
+
+	transition HandleSetParameterReceivesetMovePriorityParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	
+	
+	setMovePriorityParameter ? movePriority
+	
+	   action movePriorityParam!movePriority
+	}
+	transition HandleSetParameterReceivesetExploreMaxSpeedParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	
+	
+	setExploreMaxSpeedParameter ? exploremaxSpeed
+	
+	action exploreMaxSpeedParam ! exploremaxSpeed
+	}
+
+	transition HandleGetParameterReceivegetExplorePriorityParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger getExplorePriorityParameter 
+	  	action explorePriorityParameter ! explorePriority  
+	 
+	}
+
+	transition ExecutingSkillsExplorevOutToUpdateRecord {
+		from ExecutingSkills
+		to UpdateRecord
+		trigger 
+		
+		
+		exploreVOut ? currentExplorevOut
+		action newMovevIn = UpdateValue ( currentMovevIn , currentExplorevOut )
+	}
+	transition JunctionEmptyCycleSkillsToDoNextSkill {
+		from JunctionEmptyCycleSkills
+		to DoNextSkill
+		condition isNonEmpty ( cycleSkills )
+	}
+	transition JunctionEmptyCycleSkillsToHandleRequests {
+		from JunctionEmptyCycleSkills
+		to HandleRequests
+		condition cycleSkills == < >
+	}
+transition UpdateRecordToExecutingSkills {
+		from UpdateRecord
+		to ExecutingSkills
+	}
+	transition CheckMonitorsToCleanup {
+		from CheckMonitors
+		to HandleRequests
+		condition monitorsToCheck == { }
+		action # requestHandling
+	}
+	transition HandleMonitorStopReceive {
+		from HandleRequests
+		to HandleRequests
+		trigger 
+		stopEventMonitor ? monitorRequest
+		action currentlyActiveMonitors = diff ( currentlyActiveMonitors , { monitorRequest } )
+	}
+	transition HandleInitiateMonitorReceive {
+		from HandleRequests
+		to HandleRequests
+		trigger 
+		initiateEventMonitor ? monitorRequest
+		action currentlyActiveMonitors = union ( currentlyActiveMonitors , { monitorRequest } )
+	}
+junction JunctionEmptyCycleSkills
+transition t0 {
+		from CheckMonitors
+		to CheckMonitors
+		condition Events :: EMPTY in currentlyActiveMonitors
+		action monitorsToCheck = { }
+	}
+}
+

@@ -1,0 +1,37 @@
+[
+	{
+		"name": "Control_CSkill_Explore::Explore refines EBS1 (EBS1) [failures model]",
+		"type": "refines",
+		"negated": false 
+	},
+	{
+		"name": "Control_CSkill_Explore::Explore refines EBS2 (EBS2) [failures model]",
+		"type": "refines",
+		"negated": false 
+	},
+	{
+		"name": "Control_CSkill_Explore::Explore refines EBS3 (EBS3) [failures model]",
+		"type": "refines",
+		"negated": false 
+	},
+	{
+		"name": "Control_CSkill_Explore::Explore refines EBS4 (EBS4) [failures model]",
+		"type": "refines",
+		"negated": false 
+	},
+	{
+		"name": "Control_CSkill_Explore::Explore refines EBS5 (EBS5) [failures model]",
+		"type": "refines",
+		"negated": false 
+	},
+	{
+		"name": "Control_CSkill_Explore::Explore refines EBS6 (EBS6) [failures model]",
+		"type": "refines",
+		"negated": false 
+	},
+	{
+		"name": "Control_CSkill_Explore::Explore refines EBCS1 (EBCS1) [failures model]",
+		"type": "refines",
+		"negated": false 
+	}
+]

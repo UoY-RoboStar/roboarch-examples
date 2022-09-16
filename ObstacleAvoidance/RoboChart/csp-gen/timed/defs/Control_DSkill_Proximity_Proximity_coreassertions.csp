@@ -1,0 +1,22 @@
+include "core_defs.csp"
+include "Control_DSkill_Proximity_defs.csp"
+include "timed_definitions.csp"
+include "Control_DSkill_Proximity_Proximity.csp"
+include "Types_defs.csp"
+include "robochart_defs.csp"
+include "../instantiations.csp"
+channel r__
+-- generate Control_DSkill_Proximity_Proximity
+P_Control_DSkill_Proximity_Proximity = let
+	id__ = 0
+	
+	
+	
+within
+	Control_DSkill_Proximity_Proximity::O__(
+		id__
+	)
+assert P_Control_DSkill_Proximity_Proximity :[deadlock-free]	
+assert P_Control_DSkill_Proximity_Proximity;RUN({r__}) :[deadlock-free]
+assert P_Control_DSkill_Proximity_Proximity :[deterministic]
+assert P_Control_DSkill_Proximity_Proximity :[divergence-free]

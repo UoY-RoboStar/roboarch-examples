@@ -1,0 +1,364 @@
+package Control::SkillsManager
+
+import set_toolkit::* 
+import sequence_toolkit::* 
+import Types::* 
+import Control::DSkill::Move::* 
+import Control::DSkill::Proximity::* 
+import Control::CSkill::Explore::* 
+
+
+
+
+
+
+stm SkillsManager { 
+	
+	
+	uses IControl
+	uses IMove
+	uses IProximity
+	uses IExplore
+	
+	
+	
+	
+	var activationRequest : Skills , cycleSkills : Seq( Skills ) , currentlyActiveSkills : Set( Skills ) , monitorRequest : Events , 
+		currentlyActiveMonitors : Set( Events ) , newExploreobstacleDistance : boolean , 
+		newExplorevOut : boolean , newMovevIn : boolean , proximityPriority : nat , explorePriority : nat , exploresafetyDistance : int , movePriority : nat , exploremaxSpeed : real , 
+		currentProximitygap : int * nat , currentExploreobstacleDistance : int * nat , currentExplorevOut : Velocities * nat , currentMovevIn : Velocities * nat , executingSkills : Set( Skills ) , 
+		setExecuting : Skills , monitorsToCheck : Set( Events ) 
+	
+	const REQUEST_HANDLING_DELAY : nat , ASYNCHRONOUS_SKILLS : Seq( Skills ) = < Skills :: PROXIMITY > , MAX_SEQ_LENGTH : nat = 3
+	
+	clock requestHandling
+
+	state Initialise {
+		entry currentlyActiveSkills = { } ; cycleSkills = < > ; newExploreobstacleDistance = false ; newMovevIn = false ; # requestHandling 
+	
+	}
+
+	state UpdateRecord {
+		entry if ( newExploreobstacleDistance /\ ( filter ( cycleSkills , { Skills :: EXPLORE } ) == <> ) ) then cycleSkills = concat ( cycleSkills , < Skills :: EXPLORE > ) ; newExploreobstacleDistance = false end
+	}
+
+	initial SkillsManagerInitial
+
+	 state DoNextSkill {
+		entry executingSkills = { }
+		state ExecuteProximity {
+			entry executeProximity
+		}
+		state ExecuteMove {
+			entry moveVIn ! ( currentMovevIn [ 1 ] ) ; executeMove
+		}
+		state ExecuteExplore {
+			entry exploreObstacleDistance ! ( currentExploreobstacleDistance [ 1 ] ) ; executeExplore
+		}
+		initial DoNextSkillInitial
+		final DoNextSkillFinal
+		junction DoNextSkillJunctionEmptyCycleSkills
+		state Next {
+			entry setExecuting = head ( cycleSkills ) ; cycleSkills = tail ( cycleSkills )
+		}
+		transition InitialToJunctionEmptyCycleSkills {
+			from DoNextSkillInitial
+			to DoNextSkillJunctionEmptyCycleSkills
+		}
+		transition NextMoveToExecuteMove {
+			from Next
+			to ExecuteMove
+			condition setExecuting == Skills :: MOVE
+		}
+		transition NextExploreToExecuteExplore {
+			from Next
+			to ExecuteExplore
+			condition setExecuting == Skills :: EXPLORE
+		}
+		transition ExecuteExploreToJunctionEmptyCycleSkills {
+			from ExecuteExplore
+			to DoNextSkillJunctionEmptyCycleSkills
+			action executingSkills = union ( executingSkills , { Skills :: EXPLORE } )
+		}
+		transition ExecuteMoveToJunctionEmptyCycleSkills {
+			from ExecuteMove
+			to DoNextSkillJunctionEmptyCycleSkills
+			action executingSkills = union ( executingSkills , { Skills :: MOVE } )
+		}
+		transition ExecuteProximityToJunctionEmptyCycleSkills {
+			from ExecuteProximity
+			to DoNextSkillJunctionEmptyCycleSkills
+			action executingSkills = union ( executingSkills , { Skills :: PROXIMITY } )
+		}
+		transition JunctionEmptyCycleSkillToFinal {
+			from DoNextSkillJunctionEmptyCycleSkills
+			to DoNextSkillFinal
+			condition cycleSkills == < >
+		}
+		transition NextProximityToExecuteProximity {
+			from Next
+			to ExecuteProximity
+			condition setExecuting == Skills :: PROXIMITY
+		}
+		transition JunctionEmptyCycleSkillsToNext {
+			from DoNextSkillJunctionEmptyCycleSkills
+			to Next
+			condition isNonEmpty ( cycleSkills )
+		}
+	}
+
+	state HandleRequests { 
+	}
+
+	state CheckMonitors {
+	}
+
+	 
+state ExecutingSkills {
+	}
+
+	transition HandleGetParameterReceivegetMovePriorityParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger getMovePriorityParameter 
+	  	action movePriorityParameter ! movePriority  
+	 
+	}
+
+	transition HandleSetParameterReceivesetExplorePriorityParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	
+	
+	setExplorePriorityParameter ? explorePriority
+	}
+
+	transition ExecutingSkillsToCheckMonitors {
+		from ExecutingSkills
+		to CheckMonitors
+		condition executingSkills == { }
+		action monitorsToCheck = currentlyActiveMonitors
+	}
+	transition HandleValueQueriesReceivegetProximityGapValue {
+		from HandleRequests
+		to HandleRequests
+		trigger getProximityGapValue 
+	  	action proximityGapValue ! 	( currentProximitygap [1] )   
+	 
+	}
+
+	transition HandleSetParameterReceivesetProximityPriorityParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	
+	
+	setProximityPriorityParameter ? proximityPriority
+	}
+
+	transition InitialiseToHandleValueQueries {
+		from Initialise
+		to HandleRequests
+	}
+
+	transition HandleGetParameterReceivegetProximityPriorityParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger getProximityPriorityParameter 
+	  	action proximityPriorityParameter ! proximityPriority  
+	 
+	}
+
+	transition HandleDeactivationReceive {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	  	
+		
+		deactivate ? activationRequest
+		action currentlyActiveSkills = diff ( currentlyActiveSkills , { activationRequest } )   
+	
+	}
+	transition HandleValueQueriesReceivegetExploreVOutValue {
+		from HandleRequests
+		to HandleRequests
+		trigger getExploreVOutValue 
+	  	action exploreVOutValue ! 	( currentExplorevOut [1] )   
+	 
+	}
+
+	transition ExecutingSkillsReceiveCompleteProximity {
+		from ExecutingSkills
+		to ExecutingSkills
+	
+	trigger 
+		
+		completeProximity
+		action if (Skills :: PROXIMITY in executingSkills ) then executingSkills = diff ( executingSkills , { Skills :: PROXIMITY } ) end
+	}
+	
+	transition ExecutingSkillsReceiveCompleteExplore {
+		from ExecutingSkills
+		to ExecutingSkills
+	
+	trigger 
+		
+		completeExplore
+		action if (Skills :: EXPLORE in executingSkills ) then executingSkills = diff ( executingSkills , { Skills :: EXPLORE } ) end
+	}
+	
+	transition ExecutingSkillsReceiveCompleteMove {
+		from ExecutingSkills
+		to ExecutingSkills
+	
+	trigger 
+		
+		completeMove
+		action if (Skills :: MOVE in executingSkills ) then executingSkills = diff ( executingSkills , { Skills :: MOVE } ) end
+	}
+
+	transition HandleREquestsToJunctionEmptyCycleSkills {
+		from HandleRequests
+		to JunctionEmptyCycleSkills
+		condition 	since( requestHandling )  > REQUEST_HANDLING_DELAY  
+	
+	  	action # requestHandling ; cycleSkills = concat ( cycleSkills , ASYNCHRONOUS_SKILLS ) ; cycleSkills = filter ( cycleSkills , currentlyActiveSkills ) 
+	}
+	transition SkillsManagerInitialToInitialise {
+		from SkillsManagerInitial
+		to Initialise
+	}
+
+	transition DoNextSkillToExecutingSkills {
+		from DoNextSkill
+		to ExecutingSkills
+	condition cycleSkills == < >
+	}
+	transition HandleActivationReceive {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	  	
+		
+		activate ? activationRequest
+		action currentlyActiveSkills = union ( currentlyActiveSkills , { activationRequest } )   
+	
+	}
+
+	transition HandleActiveSkillsReceive {
+		from HandleRequests
+		to HandleRequests
+		trigger getActiveSkills 
+	  	action activeSkills ! currentlyActiveSkills  
+	 
+	}
+	transition HandleGetParameterReceivegetExploreMaxSpeedParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger getExploreMaxSpeedParameter 
+	  	action exploreMaxSpeedParameter ! exploremaxSpeed  
+	 
+	}
+	transition HandleSetParameterReceivesetExploreSafetyDistanceParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	
+	
+	setExploreSafetyDistanceParameter ? exploresafetyDistance
+	}
+	transition HandleGetParameterReceivegetExploreSafetyDistanceParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger getExploreSafetyDistanceParameter 
+	  	action exploreSafetyDistanceParameter ! exploresafetyDistance  
+	 
+	}
+
+	transition HandleSetParameterReceivesetMovePriorityParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	
+	
+	setMovePriorityParameter ? movePriority
+	}
+	transition HandleSetParameterReceivesetExploreMaxSpeedParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger  
+	
+	
+	setExploreMaxSpeedParameter ? exploremaxSpeed
+	}
+
+	transition HandleGetParameterReceivegetExplorePriorityParameter {
+		from HandleRequests
+		to HandleRequests
+		trigger getExplorePriorityParameter 
+	  	action explorePriorityParameter ! explorePriority  
+	 
+	}
+	transition ExecutingSkillsProximityGapToUpdateRecord {
+		from ExecutingSkills
+		to UpdateRecord
+		trigger 
+		
+		
+		proximityGap ? currentProximitygap
+		action newExploreobstacleDistance = UpdateValue ( currentExploreobstacleDistance , currentProximitygap )
+	}
+	transition ExecutingSkillsExplorevOutToUpdateRecord {
+		from ExecutingSkills
+		to UpdateRecord
+		trigger 
+		
+		
+		exploreVOut ? currentExplorevOut
+		action newMovevIn = UpdateValue ( currentMovevIn , currentExplorevOut )
+	}
+	transition JunctionEmptyCycleSkillsToDoNextSkill {
+		from JunctionEmptyCycleSkills
+		to DoNextSkill
+		condition isNonEmpty ( cycleSkills )
+	}
+	transition JunctionEmptyCycleSkillsToHandleRequests {
+		from JunctionEmptyCycleSkills
+		to HandleRequests
+		condition cycleSkills == < >
+	}
+transition UpdateRecordToExecutingSkills {
+		from UpdateRecord
+		to ExecutingSkills
+	}
+	transition CheckMonitorsToCleanup {
+		from CheckMonitors
+		to HandleRequests
+		condition monitorsToCheck == { }
+		action # requestHandling
+	}
+	transition CheckMonitorsCheckSafetyDistanceReached {
+		from CheckMonitors
+		to CheckMonitors
+		condition (Events :: SAFETYDISTANCEREACHED in monitorsToCheck )
+		action 
+	if ( currentProximitygap [ 1 ] < exploresafetyDistance ) then eventReply ! Events :: SAFETYDISTANCEREACHED end ; monitorsToCheck = diff ( monitorsToCheck , { Events :: SAFETYDISTANCEREACHED } )
+	}
+	transition HandleMonitorStopReceive {
+		from HandleRequests
+		to HandleRequests
+		trigger 
+		stopEventMonitor ? monitorRequest
+		action currentlyActiveMonitors = diff ( currentlyActiveMonitors , { monitorRequest } )
+	}
+	transition HandleInitiateMonitorReceive {
+		from HandleRequests
+		to HandleRequests
+		trigger 
+		initiateEventMonitor ? monitorRequest
+		action currentlyActiveMonitors = union ( currentlyActiveMonitors , { monitorRequest } )
+	}
+junction JunctionEmptyCycleSkills
+}
+

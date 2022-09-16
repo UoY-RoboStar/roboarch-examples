@@ -1,0 +1,139 @@
+package Control::CSkill::Explore
+
+import Types::* 
+
+
+
+
+
+
+stm Explore { 
+	
+	
+	uses IExplore
+	
+	
+	
+	var maxSpeedParam : real , safetyDistanceParam : int , PriorityParam : nat , obstacleDistance : int , vOut : Velocities , PriorityParamInitialised : boolean = 	false  
+	 , maxSpeedParamInitialised : boolean = 	false  
+	 , safetyDistanceParamInitialised : boolean = 	false  
+	 
+	 const ZERO_SPEED: Velocities
+	 
+	 var nextMotorsVelocity: Velocities
+	 
+
+	initial Initial
+
+	 state Initialise { 
+	}
+
+	 state Deactivated { 
+	}
+
+	 state Startup { 
+	}
+
+	 state Ready { 
+	}
+
+	 state ComputeOutputs {
+		entry nextMotorsVelocity . linear = maxSpeedParam ; nextMotorsVelocity . angular = 0 ; exploreVOut ! (| nextMotorsVelocity , PriorityParam |)
+	}
+
+	 state Cleanup { 
+	}
+
+	transition InitialToInitialise {
+		from Initial
+		to Initialise
+	}
+
+	transition InitialiseToDeactivated {
+		from Initialise
+		to Deactivated
+		condition 	safetyDistanceParamInitialised /\ PriorityParamInitialised /\ maxSpeedParamInitialised  
+	
+	}
+
+	transition DeactivatedToStartup {
+		from Deactivated
+		to Startup
+		trigger activateExplore 
+	}
+
+	transition StartupToReady {
+		from Startup
+		to Ready
+	}
+
+	transition ReadyToComputeoutputs {
+		from Ready
+		to ComputeOutputs
+		trigger executeExplore 
+	}
+
+	transition ComputeoutputsToReady {
+		from ComputeOutputs
+		to Ready
+	  	action completeExplore 
+	}
+
+	transition ReadyToCleanup {
+		from Ready
+		to Cleanup
+		trigger deactivateExplore 
+	}
+
+	transition CleanupToDeactivated {
+		from Cleanup
+		to Deactivated
+	}
+
+
+	transition InitialiseReceivemaxSpeedParam {
+		from Initialise
+		to Initialise
+		trigger exploreMaxSpeedParam ? maxSpeedParam 
+	  	action maxSpeedParamInitialised = 	true  
+	
+	}
+
+	transition DeactivatedReceivemaxSpeedParam {
+		from Deactivated
+		to Deactivated
+		trigger exploreMaxSpeedParam ? maxSpeedParam 
+	}
+
+	transition ReadyReceivemaxSpeedParam {
+		from Ready
+		to Ready
+		trigger exploreMaxSpeedParam ? maxSpeedParam 
+	}
+
+
+
+
+	transition InitialiseReceivePriorityParam {
+		from Initialise
+		to Initialise
+		trigger explorePriorityParam ? PriorityParam 
+	  	action PriorityParamInitialised = 	true  
+	
+	}
+
+	transition DeactivatedReceivePriorityParam {
+		from Deactivated
+		to Deactivated
+		trigger explorePriorityParam ? PriorityParam 
+	}
+
+	transition ReadyReceivePriorityParam {
+		from Ready
+		to Ready
+		trigger explorePriorityParam ? PriorityParam 
+	}
+
+	 
+}
+

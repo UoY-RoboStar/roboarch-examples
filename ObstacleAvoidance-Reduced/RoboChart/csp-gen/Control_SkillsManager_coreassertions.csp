@@ -1,0 +1,24 @@
+include "Control_SkillsManager.csp"
+
+-- generate Control_SkillsManager_SkillsManager
+P_Control_SkillsManager_SkillsManager = let
+	id__ = 0
+	
+	
+	const_Control_SkillsManager_SkillsManager_ASYNCHRONOUS_SKILLS = <Types_Skills_EXPLORE>
+	const_Control_SkillsManager_SkillsManager_MAX_SEQ_LENGTH = 2
+	
+within
+	Control_SkillsManager::SkillsManager::O__(
+		id__,
+		const_Control_SkillsManager_SkillsManager_REQUEST_HANDLING_DELAY,
+		const_Control_SkillsManager_SkillsManager_ASYNCHRONOUS_SKILLS,
+		const_Control_SkillsManager_SkillsManager_MAX_SEQ_LENGTH
+	)
+assert P_Control_SkillsManager_SkillsManager :[deadlock-free]	
+assert P_Control_SkillsManager_SkillsManager;RUN({r__}) :[deadlock-free]
+assert P_Control_SkillsManager_SkillsManager :[deterministic]
+assert P_Control_SkillsManager_SkillsManager :[divergence-free]
+
+
+

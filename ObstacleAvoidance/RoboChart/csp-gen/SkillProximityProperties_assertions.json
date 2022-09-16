@@ -1,0 +1,12 @@
+[
+	{
+		"name": "Control_DSkill_Proximity::Proximity refines EBDS1 (EBDS1) [failures model]",
+		"type": "refines",
+		"negated": false 
+	},
+	{
+		"name": "Control_DSkill_Proximity::Proximity refines EBDS3 (EBDS3) [failures model]",
+		"type": "refines",
+		"negated": false 
+	}
+]

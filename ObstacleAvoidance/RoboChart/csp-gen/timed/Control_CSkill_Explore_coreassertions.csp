@@ -1,0 +1,20 @@
+include "Control_CSkill_Explore.csp"
+
+-- generate Control_CSkill_Explore_Explore
+P_Control_CSkill_Explore_Explore = let
+	id__ = 0
+	
+	
+	
+within
+	Control_CSkill_Explore::Explore::O__(
+		id__,
+		const_Control_CSkill_Explore_Explore_ZERO_SPEED
+	)
+assert P_Control_CSkill_Explore_Explore :[deadlock-free]	
+assert P_Control_CSkill_Explore_Explore;RUN({r__}) :[deadlock-free]
+assert P_Control_CSkill_Explore_Explore :[deterministic]
+assert P_Control_CSkill_Explore_Explore :[divergence-free]
+
+
+

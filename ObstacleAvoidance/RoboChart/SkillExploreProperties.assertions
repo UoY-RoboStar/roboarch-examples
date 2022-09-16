@@ -1,0 +1,170 @@
+
+
+csp ExploreSkillEvents csp-begin
+	
+	skillControlEvents = { 
+		Control_CSkill_Explore::Explore::activateExplore.in, Control_CSkill_Explore::Explore::deactivateExplore.in, 
+		Control_CSkill_Explore::Explore::executeExplore.in, Control_CSkill_Explore::Explore::completeExplore.out
+	}
+	
+	skillParameterEvents = Union( { {|Control_CSkill_Explore::Explore::exploreMaxSpeedParam.in|}, 
+		                            {|Control_CSkill_Explore::Explore::explorePriorityParam.in|}, 
+		                            {|Control_CSkill_Explore::Explore::exploreSafetyDistanceParam.in|}
+		                          }
+	)
+	
+	skillInputEvents = {|Control_CSkill_Explore::Explore::exploreObstacleDistance.in|}
+		
+		
+	skillOutputEvents = {|Control_CSkill_Explore::Explore::exploreVOut.out|}
+	
+	
+	allSkillEvents = Union({ skillControlEvents, skillParameterEvents, skillInputEvents, skillOutputEvents })
+	
+csp-end
+
+
+csp EBS1  csp-begin
+
+	EBS1 = [] ev: skillParameterEvents @ ev -> CHAOS(allSkillEvents)
+		
+csp-end
+
+
+csp EBS2 csp-begin
+
+	EBS2 = let
+		PRE({}) = [] ev: skillParameterEvents @ ev -> PRE({ev})
+		
+		PRE(evs) = if ( ( inter(evs,{|Control_CSkill_Explore::Explore::exploreMaxSpeedParam.in|}) != {} ) and 
+						( inter(evs,{|Control_CSkill_Explore::Explore::explorePriorityParam.in|}) != {} ) and 
+						( inter(evs,{|Control_CSkill_Explore::Explore::exploreSafetyDistanceParam.in|}) != {} )
+		)          then
+						CON
+				   else
+				   		[] ev: skillParameterEvents @ ev -> PRE( union({ev}, evs) )
+			
+		CON = [] ev: skillParameterEvents @ ev -> CON
+			  []
+			  Control_CSkill_Explore::Explore::activateExplore.in -> POS
+			  
+		POS = CHAOS( allSkillEvents ) 
+		
+	within PRE({})
+
+csp-end
+
+
+csp EBS3 csp-begin
+
+	EBS3 = let
+
+		PRE = |~| ev: diff(allSkillEvents, {Control_CSkill_Explore::Explore::activateExplore.in}) @ ev -> PRE
+			  |~| 
+			  Control_CSkill_Explore::Explore::activateExplore.in -> CON
+			
+		CON = [] ev: union(skillParameterEvents, skillInputEvents) @ ev -> CON
+			  []
+			  Control_CSkill_Explore::Explore::executeExplore.in -> POS
+			  []
+			  Control_CSkill_Explore::Explore::deactivateExplore.in -> POS
+			  
+		POS = CHAOS( allSkillEvents ) 
+		
+	within PRE
+
+csp-end
+
+
+csp EBS4 csp-begin
+
+	EBS4 = let
+		
+		PRE = |~| ev: diff(allSkillEvents, {Control_CSkill_Explore::Explore::executeExplore.in}) @ ev -> PRE
+			  |~| 
+			  Control_CSkill_Explore::Explore::executeExplore.in -> CON
+			
+			
+		CON = |~| ev:  diff(allSkillEvents, skillControlEvents) @ ev -> CON
+              |~|		     
+		      Control_CSkill_Explore::Explore::completeExplore.out -> POS
+			  
+			    
+		POS = CHAOS( allSkillEvents ) 
+		
+	within PRE
+
+csp-end
+
+
+csp EBS5 csp-begin
+
+	EBS5 = let	       
+		PRE = |~| ev: diff(allSkillEvents, {Control_CSkill_Explore::Explore::deactivateExplore.in}) @ ev -> PRE
+			  |~|
+			  Control_CSkill_Explore::Explore::deactivateExplore.in -> CON
+			
+		CON = [] ev:  skillParameterEvents @ ev -> CON
+			  []
+			  Control_CSkill_Explore::Explore::activateExplore.in -> POS
+
+			  
+		POS = CHAOS( allSkillEvents ) 
+		
+	within PRE
+
+csp-end
+
+
+csp EBS6 csp-begin
+
+	EBS6 = let	       
+		PRE = |~| ev: diff(allSkillEvents, union(skillOutputEvents, {|Control_CSkill_Explore::Explore::explorePriorityParam.in|}) ) @ 
+					ev -> PRE
+			  |~|
+			  Control_CSkill_Explore::Explore::explorePriorityParam.in?p -> CON(p)
+			
+		CON(priority) = |~| ev:  diff(allSkillEvents, union( skillOutputEvents , {|Control_CSkill_Explore::Explore::explorePriorityParam.in|}) ) @ 
+								ev -> CON(priority)
+
+						|~|
+						|~| ev: { Control_CSkill_Explore::Explore::exploreVOut.out.(v,priority) | v <- Types_Velocities } @ 
+								ev -> CON(priority)
+						
+						|~|
+						Control_CSkill_Explore::Explore::explorePriorityParam.in?p -> CON(p)	   
+	within PRE
+
+csp-end
+
+
+csp EBCS1 csp-begin
+
+	EBCS1 = let	
+		PRE = |~| ev: diff( allSkillEvents, { Control_CSkill_Explore::Explore::executeExplore.in }) @ ev -> PRE
+			  |~| Control_CSkill_Explore::Explore::executeExplore.in  -> CON
+			  
+	    CON = |~| ev: (skillOutputEvents) @ ev -> CON
+		    |~|
+		    Control_CSkill_Explore::Explore::completeExplore.out -> POS
+		    
+		POS = CHAOS( allSkillEvents )
+		     
+	within PRE
+csp-end
+
+
+
+assertion EBS1: Control::CSkill::Explore::Explore refines EBS1 in the failures model
+
+assertion EBS2: Control::CSkill::Explore::Explore refines EBS2 in the failures model
+
+assertion EBS3: Control::CSkill::Explore::Explore refines EBS3 in the failures model
+
+assertion EBS4: Control::CSkill::Explore::Explore refines EBS4 in the failures model
+
+assertion EBS5: Control::CSkill::Explore::Explore refines EBS5 in the failures model
+
+assertion EBS6: Control::CSkill::Explore::Explore refines EBS6 in the failures model
+
+assertion EBCS1: Control::CSkill::Explore::Explore refines EBCS1 in the failures model

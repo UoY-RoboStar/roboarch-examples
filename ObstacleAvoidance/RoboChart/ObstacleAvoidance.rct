@@ -1,0 +1,50 @@
+package ObstacleAvoidance
+
+import Types::* 
+import Platform::* 
+import Control::* 
+
+
+
+
+ module ObstacleAvoidance {
+	
+	 cref Control = Control
+
+	 rref Platform = PuckRobot
+
+	
+	
+		 
+connection Platform on proximity to Control on proximity ( _async )
+	connection Control on move to Platform on move ( _async )
+connection ctrl_ref0 on activate to Control on activate ( _async )
+	connection ctrl_ref0 on deactivate to Control on deactivate ( _async )
+	connection ctrl_ref0 on getActiveSkills to Control on getActiveSkills ( _async )
+	connection Control on activeSkills to ctrl_ref0 on activeSkills ( _async )
+	connection Control on eventReply to ctrl_ref0 on eventReply ( _async )
+	connection ctrl_ref0 on initiateEventMonitor to Control on initiateEventMonitor ( _async )
+	connection ctrl_ref0 on stopEventMonitor to Control on stopEventMonitor ( _async )
+	connection ctrl_ref0 on setMovePriorityParameter to Control on setMovePriorityParameter ( _async )
+	connection ctrl_ref0 on getMovePriorityParameter to Control on getMovePriorityParameter ( _async )
+	connection Control on movePriorityParameter to ctrl_ref0 on movePriorityParameter ( _async )
+	connection ctrl_ref0 on setExploreSafetyDistanceParameter to Control on setExploreSafetyDistanceParameter ( _async )
+	connection ctrl_ref0 on getExploreSafetyDistanceParameter to Control on getExploreSafetyDistanceParameter ( _async )
+	connection Control on exploreSafetyDistanceParameter to ctrl_ref0 on exploreSafetyDistanceParameter ( _async )
+	connection ctrl_ref0 on getProximityGapValue to Control on getProximityGapValue ( _async )
+	connection Control on proximityGapValue to ctrl_ref0 on proximityGapValue ( _async )
+	connection ctrl_ref0 on getExploreVOutValue to Control on getExploreVOutValue ( _async )
+	connection Control on exploreVOutValue to ctrl_ref0 on exploreVOutValue ( _async )
+	connection ctrl_ref0 on setExploreMaxSpeedParameter to Control on setExploreMaxSpeedParameter ( _async )
+	connection ctrl_ref0 on getExploreMaxSpeedParameter to Control on getExploreMaxSpeedParameter ( _async )
+	connection Control on exploreMaxSpeedParameter to ctrl_ref0 on exploreMaxSpeedParameter ( _async )
+	connection ctrl_ref0 on setProximityPriorityParameter to Control on setProximityPriorityParameter
+	connection ctrl_ref0 on getProximityPriorityParameter to Control on getProximityPriorityParameter ( _async )
+	connection Control on proximityPriorityParameter to ctrl_ref0 on proximityPriorityParameter ( _async )
+	connection ctrl_ref0 on setExplorePriorityParameter to Control on setExplorePriorityParameter ( _async )
+	connection ctrl_ref0 on getExplorePriorityParameter to Control on getExplorePriorityParameter ( _async )
+	connection Control on explorePriorityParameter to ctrl_ref0 on explorePriorityParameter ( _async )
+	cref ctrl_ref0 = Executive
+}
+
+import Executive::*

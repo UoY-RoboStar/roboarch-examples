@@ -1,0 +1,1153 @@
+module Control_DSkill_Move_Move
+exports
+	-- flow channels
+	channel internal__ : TIDS
+	channel enteredV, enterV, exitV, exitedV : SIDS
+	channel enter, entered: SIDS.SIDS
+	channel exit,exited: SIDS.SIDS
+	channel terminate
+	
+	-- variable channels
+	channel get_PriorityParam, set_PriorityParam: core_nat
+	channel get_vIn, set_vIn: Types_Velocities
+	channel get_PriorityParamInitialised, set_PriorityParamInitialised: core_boolean
+			
+	-- shared variable channels
+	
+	-- local variable channels for defined operations that are required by the state machine
+	
+	-- declaring state machine events
+	channel platformMove__: TIDS.InOut.Types_Velocities
+	channel platformMove: InOut.Types_Velocities
+	channel activateMove__: TIDS.InOut
+	channel activateMove: InOut
+	channel deactivateMove__: TIDS.InOut
+	channel deactivateMove: InOut
+	channel executeMove__: TIDS.InOut
+	channel executeMove: InOut
+	channel movePriorityParam__: TIDS.InOut.core_nat
+	channel movePriorityParam: InOut.core_nat
+	channel moveVIn__: TIDS.InOut.Types_Velocities
+	channel moveVIn: InOut.Types_Velocities
+	channel completeMove__: TIDS.InOut
+	channel completeMove: InOut
+	
+	-- declaring call and ret events for undefined operations
+	
+	-- Only the undefined operations are declared here.
+	-- If the state machine is in isolation, all required operations will be undefined.
+	-- If it is in the context of a controller, the required operations not provided by the
+	-- controller will be declared here, and the defined operations will be defined in the
+	-- context of the Controller module, and therefore within scope of the state machien module.
+	
+	
+	-- definition of functions used to expose flow channels
+	ShowEvents(P,E) = P[[ entered.x____.y____ <- enteredV.y____ | entered.x____.y____ <- E]]
+					   [[ enter.x____.y____ <- enterV.y____ | enter.x____.y____ <- E]]
+					   [[ exit.x____.y____ <- exitV.y____ | exit.x____.y____ <- E]]
+					   [[ exited.x____.y____ <- exitedV.y____ | exited.x____.y____ <- E ]]
+						 
+	ShowEnteredV(P) = P[[ entered.x____.y____ <- enteredV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+	ShowEnterV(P) = P[[ enter.x____.y____ <- enterV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+	ShowExitV(P) = P[[ exit.x____.y____ <- exitV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+	ShowExitedV(P) = P[[ exited.x____.y____ <- exitedV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+	ShowV(P) = P[[ entered.x____.y____ <- enteredV.y____ | x____ <- SIDS, y____ <- SIDS]]
+				[[ enter.x____.y____ <- enterV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+				[[ exit.x____.y____ <- exitV.y____ | x____ <- SIDS, y____ <- SIDS]]
+				[[ exited.x____.y____ <- exitedV.y____ | x____ <- SIDS, y____ <- SIDS ]]
+	
+	-- declaring identifiers of state and final states
+	datatype SIDS = SID_Move
+	              | SID_Move_Initialise
+	              | SID_Move_Deactivated
+	              | SID_Move_Startup
+	              | SID_Move_Ready
+	              | SID_Move_HandleActuationCommands
+	              | SID_Move_HandleSensorData
+	              | SID_Move_Cleanup
+	
+	-- declaring identifiers of transitions
+	datatype TIDS = NULLTRANSITION__
+	              | TID_Move_InitialToInitialise
+	              | TID_Move_InitialiseToDeactivated
+	              | TID_Move_DeactivatedToStartup
+	              | TID_Move_StartupToReady
+	              | TID_Move_ReadyToHandleActuationCommands
+	              | TID_Move_HandleActuationCommandsToHandleSensorData
+	              | TID_Move_HandleSensorDataToReady
+	              | TID_Move_ReadyToCleanup
+	              | TID_Move_CleanupToDeactivated
+	              | TID_Move_ReadyReceivevIn
+	              | TID_Move_InitialiseReceivePriorityParam
+	              | TID_Move_DeactivatedReceivePriorityParam
+	              | TID_Move_ReadyReceivePriorityParam
+	
+	-- declaring identifiers of transitions that can interupt a state (excludes transitions from junctions)
+	
+	ITIDS = {
+		TID_Move_InitialiseToDeactivated,	TID_Move_DeactivatedToStartup,	TID_Move_StartupToReady,	TID_Move_ReadyToHandleActuationCommands,	TID_Move_HandleActuationCommandsToHandleSensorData,	TID_Move_HandleSensorDataToReady,	TID_Move_ReadyToCleanup,	TID_Move_CleanupToDeactivated,	TID_Move_ReadyReceivevIn,	TID_Move_InitialiseReceivePriorityParam,	TID_Move_DeactivatedReceivePriorityParam,	TID_Move_ReadyReceivePriorityParam
+	}
+	
+	int_int = {|
+		platformMove__.TID_Move_InitialiseToDeactivated,
+		activateMove__.TID_Move_InitialiseToDeactivated,
+		deactivateMove__.TID_Move_InitialiseToDeactivated,
+		executeMove__.TID_Move_InitialiseToDeactivated,
+		movePriorityParam__.TID_Move_InitialiseToDeactivated,
+		moveVIn__.TID_Move_InitialiseToDeactivated,
+		completeMove__.TID_Move_InitialiseToDeactivated,
+		internal__.TID_Move_InitialiseToDeactivated,
+		platformMove__.TID_Move_DeactivatedToStartup,
+		activateMove__.TID_Move_DeactivatedToStartup,
+		deactivateMove__.TID_Move_DeactivatedToStartup,
+		executeMove__.TID_Move_DeactivatedToStartup,
+		movePriorityParam__.TID_Move_DeactivatedToStartup,
+		moveVIn__.TID_Move_DeactivatedToStartup,
+		completeMove__.TID_Move_DeactivatedToStartup,
+		internal__.TID_Move_DeactivatedToStartup,
+		platformMove__.TID_Move_StartupToReady,
+		activateMove__.TID_Move_StartupToReady,
+		deactivateMove__.TID_Move_StartupToReady,
+		executeMove__.TID_Move_StartupToReady,
+		movePriorityParam__.TID_Move_StartupToReady,
+		moveVIn__.TID_Move_StartupToReady,
+		completeMove__.TID_Move_StartupToReady,
+		internal__.TID_Move_StartupToReady,
+		platformMove__.TID_Move_ReadyToHandleActuationCommands,
+		activateMove__.TID_Move_ReadyToHandleActuationCommands,
+		deactivateMove__.TID_Move_ReadyToHandleActuationCommands,
+		executeMove__.TID_Move_ReadyToHandleActuationCommands,
+		movePriorityParam__.TID_Move_ReadyToHandleActuationCommands,
+		moveVIn__.TID_Move_ReadyToHandleActuationCommands,
+		completeMove__.TID_Move_ReadyToHandleActuationCommands,
+		internal__.TID_Move_ReadyToHandleActuationCommands,
+		platformMove__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		activateMove__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		deactivateMove__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		executeMove__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		movePriorityParam__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		moveVIn__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		completeMove__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		internal__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		platformMove__.TID_Move_HandleSensorDataToReady,
+		activateMove__.TID_Move_HandleSensorDataToReady,
+		deactivateMove__.TID_Move_HandleSensorDataToReady,
+		executeMove__.TID_Move_HandleSensorDataToReady,
+		movePriorityParam__.TID_Move_HandleSensorDataToReady,
+		moveVIn__.TID_Move_HandleSensorDataToReady,
+		completeMove__.TID_Move_HandleSensorDataToReady,
+		internal__.TID_Move_HandleSensorDataToReady,
+		platformMove__.TID_Move_ReadyToCleanup,
+		activateMove__.TID_Move_ReadyToCleanup,
+		deactivateMove__.TID_Move_ReadyToCleanup,
+		executeMove__.TID_Move_ReadyToCleanup,
+		movePriorityParam__.TID_Move_ReadyToCleanup,
+		moveVIn__.TID_Move_ReadyToCleanup,
+		completeMove__.TID_Move_ReadyToCleanup,
+		internal__.TID_Move_ReadyToCleanup,
+		platformMove__.TID_Move_CleanupToDeactivated,
+		activateMove__.TID_Move_CleanupToDeactivated,
+		deactivateMove__.TID_Move_CleanupToDeactivated,
+		executeMove__.TID_Move_CleanupToDeactivated,
+		movePriorityParam__.TID_Move_CleanupToDeactivated,
+		moveVIn__.TID_Move_CleanupToDeactivated,
+		completeMove__.TID_Move_CleanupToDeactivated,
+		internal__.TID_Move_CleanupToDeactivated,
+		platformMove__.TID_Move_ReadyReceivevIn,
+		activateMove__.TID_Move_ReadyReceivevIn,
+		deactivateMove__.TID_Move_ReadyReceivevIn,
+		executeMove__.TID_Move_ReadyReceivevIn,
+		movePriorityParam__.TID_Move_ReadyReceivevIn,
+		moveVIn__.TID_Move_ReadyReceivevIn,
+		completeMove__.TID_Move_ReadyReceivevIn,
+		internal__.TID_Move_ReadyReceivevIn,
+		platformMove__.TID_Move_InitialiseReceivePriorityParam,
+		activateMove__.TID_Move_InitialiseReceivePriorityParam,
+		deactivateMove__.TID_Move_InitialiseReceivePriorityParam,
+		executeMove__.TID_Move_InitialiseReceivePriorityParam,
+		movePriorityParam__.TID_Move_InitialiseReceivePriorityParam,
+		moveVIn__.TID_Move_InitialiseReceivePriorityParam,
+		completeMove__.TID_Move_InitialiseReceivePriorityParam,
+		internal__.TID_Move_InitialiseReceivePriorityParam,
+		platformMove__.TID_Move_DeactivatedReceivePriorityParam,
+		activateMove__.TID_Move_DeactivatedReceivePriorityParam,
+		deactivateMove__.TID_Move_DeactivatedReceivePriorityParam,
+		executeMove__.TID_Move_DeactivatedReceivePriorityParam,
+		movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam,
+		moveVIn__.TID_Move_DeactivatedReceivePriorityParam,
+		completeMove__.TID_Move_DeactivatedReceivePriorityParam,
+		internal__.TID_Move_DeactivatedReceivePriorityParam,
+		platformMove__.TID_Move_ReadyReceivePriorityParam,
+		activateMove__.TID_Move_ReadyReceivePriorityParam,
+		deactivateMove__.TID_Move_ReadyReceivePriorityParam,
+		executeMove__.TID_Move_ReadyReceivePriorityParam,
+		movePriorityParam__.TID_Move_ReadyReceivePriorityParam,
+		moveVIn__.TID_Move_ReadyReceivePriorityParam,
+		completeMove__.TID_Move_ReadyReceivePriorityParam,
+		internal__.TID_Move_ReadyReceivePriorityParam
+	|}
+		
+	
+	internal_events = {|enter,entered,exit,exited|}
+	shared_variable_events = {|
+	|}
+			
+	
+	-- declaring all states
+	CS_Move_Initialise_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Move_Initialise,SID_Move_Deactivated,SID_Move_Startup,SID_Move_Ready,SID_Move_HandleActuationCommands,SID_Move_HandleSensorData,SID_Move_Cleanup},
+		y____ <- {SID_Move_Initialise}
+	|}
+	
+	
+	Move_Initialise_triggers = {|
+		deactivateMove__.TID_Move_ReadyToCleanup,
+		internal__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		executeMove__.TID_Move_ReadyToHandleActuationCommands,
+		internal__.TID_Move_InitialiseToDeactivated,
+		internal__.TID_Move_HandleSensorDataToReady,
+		activateMove__.TID_Move_DeactivatedToStartup,
+		movePriorityParam__.TID_Move_InitialiseReceivePriorityParam,
+		internal__.TID_Move_CleanupToDeactivated,
+		moveVIn__.TID_Move_ReadyReceivevIn,
+		internal__.TID_Move_StartupToReady,
+		movePriorityParam__.TID_Move_ReadyReceivePriorityParam,
+		movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam
+	|}
+	
+	State_Move_Initialise(id__) = let
+		T_Move_InitialiseToDeactivated(id__) = internal__!TID_Move_InitialiseToDeactivated ->  exit.SID_Move_Initialise.SID_Move_Initialise -> SKIP;
+							SKIP;exited.SID_Move_Initialise.SID_Move_Initialise -> SKIP;
+							enter!SID_Move_Initialise!SID_Move_Deactivated -> entered!SID_Move_Initialise!SID_Move_Deactivated ->
+							State_Move_Initialise(id__)
+		T_Move_InitialiseReceivePriorityParam(id__) = movePriorityParam__!TID_Move_InitialiseReceivePriorityParam.in?PriorityParam -> set_PriorityParam!PriorityParam ->  (exit.SID_Move_Initialise.SID_Move_Initialise -> SKIP;
+							SKIP;exited.SID_Move_Initialise.SID_Move_Initialise -> SKIP;
+							true & (set_PriorityParamInitialised!true -> SKIP);enter!SID_Move_Initialise!SID_Move_Initialise -> State_Move_Initialise_execute(id__,SID_Move_Initialise)
+		)
+		State_Move_Initialise_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Move_Initialise ->
+			(SKIP; STOP /\ (
+				T_Move_InitialiseToDeactivated(id__)[]
+				T_Move_InitialiseReceivePriorityParam(id__)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_InitialiseToDeactivated,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_InitialiseReceivePriorityParam,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Move_Initialise})!SID_Move_Initialise -> (
+						SKIP;
+						exited!y____!SID_Move_Initialise -> SKIP);
+						State_Move_Initialise(id__)
+				[] platformMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_InitialiseToDeactivated,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_InitialiseReceivePriorityParam,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Initialise})!SID_Move_Initialise -> (
+						SKIP;
+						exited!y____!SID_Move_Initialise -> SKIP);
+						State_Move_Initialise(id__)
+				[] activateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_InitialiseToDeactivated,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_InitialiseReceivePriorityParam,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Initialise})!SID_Move_Initialise -> (
+						SKIP;
+						exited!y____!SID_Move_Initialise -> SKIP);
+						State_Move_Initialise(id__)
+				[] deactivateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_InitialiseToDeactivated,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_InitialiseReceivePriorityParam,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Initialise})!SID_Move_Initialise -> (
+						SKIP;
+						exited!y____!SID_Move_Initialise -> SKIP);
+						State_Move_Initialise(id__)
+				[] executeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_InitialiseToDeactivated,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_InitialiseReceivePriorityParam,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Initialise})!SID_Move_Initialise -> (
+						SKIP;
+						exited!y____!SID_Move_Initialise -> SKIP);
+						State_Move_Initialise(id__)
+				[] movePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_InitialiseToDeactivated,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_InitialiseReceivePriorityParam,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Initialise})!SID_Move_Initialise -> (
+						SKIP;
+						exited!y____!SID_Move_Initialise -> SKIP);
+						State_Move_Initialise(id__)
+				[] moveVIn__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_InitialiseToDeactivated,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_InitialiseReceivePriorityParam,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Initialise})!SID_Move_Initialise -> (
+						SKIP;
+						exited!y____!SID_Move_Initialise -> SKIP);
+						State_Move_Initialise(id__)
+				[] completeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_InitialiseToDeactivated,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_InitialiseReceivePriorityParam,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Initialise})!SID_Move_Initialise -> (
+						SKIP;
+						exited!y____!SID_Move_Initialise -> SKIP);
+						State_Move_Initialise(id__)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Move_Initialise})!SID_Move_Initialise -> (State_Move_Initialise_execute(id__,x____))
+	
+	CS_Move_Deactivated_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Move_Initialise,SID_Move_Deactivated,SID_Move_Startup,SID_Move_Ready,SID_Move_HandleActuationCommands,SID_Move_HandleSensorData,SID_Move_Cleanup},
+		y____ <- {SID_Move_Deactivated}
+	|}
+	
+	
+	Move_Deactivated_triggers = {|
+		deactivateMove__.TID_Move_ReadyToCleanup,
+		internal__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		executeMove__.TID_Move_ReadyToHandleActuationCommands,
+		internal__.TID_Move_HandleSensorDataToReady,
+		activateMove__.TID_Move_DeactivatedToStartup,
+		internal__.TID_Move_CleanupToDeactivated,
+		moveVIn__.TID_Move_ReadyReceivevIn,
+		internal__.TID_Move_StartupToReady,
+		movePriorityParam__.TID_Move_ReadyReceivePriorityParam,
+		movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam
+	|}
+	
+	State_Move_Deactivated(id__) = let
+		T_Move_DeactivatedToStartup(id__) = activateMove__!TID_Move_DeactivatedToStartup.in ->  (exit.SID_Move_Deactivated.SID_Move_Deactivated -> SKIP;
+							SKIP;exited.SID_Move_Deactivated.SID_Move_Deactivated -> SKIP;
+							enter!SID_Move_Deactivated!SID_Move_Startup -> entered!SID_Move_Deactivated!SID_Move_Startup ->
+							State_Move_Deactivated(id__)
+		)
+		T_Move_DeactivatedReceivePriorityParam(id__) = movePriorityParam__!TID_Move_DeactivatedReceivePriorityParam.in?PriorityParam -> set_PriorityParam!PriorityParam ->  (exit.SID_Move_Deactivated.SID_Move_Deactivated -> SKIP;
+							SKIP;exited.SID_Move_Deactivated.SID_Move_Deactivated -> SKIP;
+							enter!SID_Move_Deactivated!SID_Move_Deactivated -> State_Move_Deactivated_execute(id__,SID_Move_Deactivated)
+		)
+		State_Move_Deactivated_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Move_Deactivated ->
+			(SKIP; STOP /\ (
+				T_Move_DeactivatedToStartup(id__)[]
+				T_Move_DeactivatedReceivePriorityParam(id__)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Move_Deactivated})!SID_Move_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Move_Deactivated -> SKIP);
+						State_Move_Deactivated(id__)
+				[] platformMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Deactivated})!SID_Move_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Move_Deactivated -> SKIP);
+						State_Move_Deactivated(id__)
+				[] activateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Deactivated})!SID_Move_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Move_Deactivated -> SKIP);
+						State_Move_Deactivated(id__)
+				[] deactivateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Deactivated})!SID_Move_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Move_Deactivated -> SKIP);
+						State_Move_Deactivated(id__)
+				[] executeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Deactivated})!SID_Move_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Move_Deactivated -> SKIP);
+						State_Move_Deactivated(id__)
+				[] movePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Deactivated})!SID_Move_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Move_Deactivated -> SKIP);
+						State_Move_Deactivated(id__)
+				[] moveVIn__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Deactivated})!SID_Move_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Move_Deactivated -> SKIP);
+						State_Move_Deactivated(id__)
+				[] completeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Deactivated})!SID_Move_Deactivated -> (
+						SKIP;
+						exited!y____!SID_Move_Deactivated -> SKIP);
+						State_Move_Deactivated(id__)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Move_Deactivated})!SID_Move_Deactivated -> (State_Move_Deactivated_execute(id__,x____))
+	
+	CS_Move_Startup_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Move_Initialise,SID_Move_Deactivated,SID_Move_Startup,SID_Move_Ready,SID_Move_HandleActuationCommands,SID_Move_HandleSensorData,SID_Move_Cleanup},
+		y____ <- {SID_Move_Startup}
+	|}
+	
+	
+	Move_Startup_triggers = {|
+		deactivateMove__.TID_Move_ReadyToCleanup,
+		internal__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		executeMove__.TID_Move_ReadyToHandleActuationCommands,
+		internal__.TID_Move_HandleSensorDataToReady,
+		activateMove__.TID_Move_DeactivatedToStartup,
+		internal__.TID_Move_CleanupToDeactivated,
+		moveVIn__.TID_Move_ReadyReceivevIn,
+		internal__.TID_Move_StartupToReady,
+		movePriorityParam__.TID_Move_ReadyReceivePriorityParam,
+		movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam
+	|}
+	
+	State_Move_Startup(id__) = let
+		T_Move_StartupToReady(id__) = internal__!TID_Move_StartupToReady ->  exit.SID_Move_Startup.SID_Move_Startup -> SKIP;
+							SKIP;exited.SID_Move_Startup.SID_Move_Startup -> SKIP;
+							enter!SID_Move_Startup!SID_Move_Ready -> entered!SID_Move_Startup!SID_Move_Ready ->
+							State_Move_Startup(id__)
+		State_Move_Startup_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Move_Startup ->
+			(SKIP; STOP /\ (
+				T_Move_StartupToReady(id__)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Move_Startup})!SID_Move_Startup -> (
+						SKIP;
+						exited!y____!SID_Move_Startup -> SKIP);
+						State_Move_Startup(id__)
+				[] platformMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Startup})!SID_Move_Startup -> (
+						SKIP;
+						exited!y____!SID_Move_Startup -> SKIP);
+						State_Move_Startup(id__)
+				[] activateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Startup})!SID_Move_Startup -> (
+						SKIP;
+						exited!y____!SID_Move_Startup -> SKIP);
+						State_Move_Startup(id__)
+				[] deactivateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Startup})!SID_Move_Startup -> (
+						SKIP;
+						exited!y____!SID_Move_Startup -> SKIP);
+						State_Move_Startup(id__)
+				[] executeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Startup})!SID_Move_Startup -> (
+						SKIP;
+						exited!y____!SID_Move_Startup -> SKIP);
+						State_Move_Startup(id__)
+				[] movePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Startup})!SID_Move_Startup -> (
+						SKIP;
+						exited!y____!SID_Move_Startup -> SKIP);
+						State_Move_Startup(id__)
+				[] moveVIn__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Startup})!SID_Move_Startup -> (
+						SKIP;
+						exited!y____!SID_Move_Startup -> SKIP);
+						State_Move_Startup(id__)
+				[] completeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Startup})!SID_Move_Startup -> (
+						SKIP;
+						exited!y____!SID_Move_Startup -> SKIP);
+						State_Move_Startup(id__)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Move_Startup})!SID_Move_Startup -> (State_Move_Startup_execute(id__,x____))
+	
+	CS_Move_Ready_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Move_Initialise,SID_Move_Deactivated,SID_Move_Startup,SID_Move_Ready,SID_Move_HandleActuationCommands,SID_Move_HandleSensorData,SID_Move_Cleanup},
+		y____ <- {SID_Move_Ready}
+	|}
+	
+	
+	Move_Ready_triggers = {|
+		deactivateMove__.TID_Move_ReadyToCleanup,
+		internal__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		executeMove__.TID_Move_ReadyToHandleActuationCommands,
+		internal__.TID_Move_HandleSensorDataToReady,
+		activateMove__.TID_Move_DeactivatedToStartup,
+		internal__.TID_Move_CleanupToDeactivated,
+		moveVIn__.TID_Move_ReadyReceivevIn,
+		movePriorityParam__.TID_Move_ReadyReceivePriorityParam,
+		internal__.TID_Move_StartupToReady,
+		movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam
+	|}
+	
+	State_Move_Ready(id__) = let
+		T_Move_ReadyToHandleActuationCommands(id__) = executeMove__!TID_Move_ReadyToHandleActuationCommands.in ->  (exit.SID_Move_Ready.SID_Move_Ready -> SKIP;
+							SKIP;exited.SID_Move_Ready.SID_Move_Ready -> SKIP;
+							enter!SID_Move_Ready!SID_Move_HandleActuationCommands -> entered!SID_Move_Ready!SID_Move_HandleActuationCommands ->
+							State_Move_Ready(id__)
+		)
+		T_Move_ReadyToCleanup(id__) = deactivateMove__!TID_Move_ReadyToCleanup.in ->  (exit.SID_Move_Ready.SID_Move_Ready -> SKIP;
+							SKIP;exited.SID_Move_Ready.SID_Move_Ready -> SKIP;
+							enter!SID_Move_Ready!SID_Move_Cleanup -> entered!SID_Move_Ready!SID_Move_Cleanup ->
+							State_Move_Ready(id__)
+		)
+		T_Move_ReadyReceivevIn(id__) = moveVIn__!TID_Move_ReadyReceivevIn.in?vIn -> set_vIn!vIn ->  (exit.SID_Move_Ready.SID_Move_Ready -> SKIP;
+							SKIP;exited.SID_Move_Ready.SID_Move_Ready -> SKIP;
+							enter!SID_Move_Ready!SID_Move_Ready -> State_Move_Ready_execute(id__,SID_Move_Ready)
+		)
+		T_Move_ReadyReceivePriorityParam(id__) = movePriorityParam__!TID_Move_ReadyReceivePriorityParam.in?PriorityParam -> set_PriorityParam!PriorityParam ->  (exit.SID_Move_Ready.SID_Move_Ready -> SKIP;
+							SKIP;exited.SID_Move_Ready.SID_Move_Ready -> SKIP;
+							enter!SID_Move_Ready!SID_Move_Ready -> State_Move_Ready_execute(id__,SID_Move_Ready)
+		)
+		State_Move_Ready_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Move_Ready ->
+			(SKIP; STOP /\ (
+				T_Move_ReadyToHandleActuationCommands(id__)[]
+				T_Move_ReadyToCleanup(id__)[]
+				T_Move_ReadyReceivevIn(id__)[]
+				T_Move_ReadyReceivePriorityParam(id__)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Move_Ready})!SID_Move_Ready -> (
+						SKIP;
+						exited!y____!SID_Move_Ready -> SKIP);
+						State_Move_Ready(id__)
+				[] platformMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Ready})!SID_Move_Ready -> (
+						SKIP;
+						exited!y____!SID_Move_Ready -> SKIP);
+						State_Move_Ready(id__)
+				[] activateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Ready})!SID_Move_Ready -> (
+						SKIP;
+						exited!y____!SID_Move_Ready -> SKIP);
+						State_Move_Ready(id__)
+				[] deactivateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Ready})!SID_Move_Ready -> (
+						SKIP;
+						exited!y____!SID_Move_Ready -> SKIP);
+						State_Move_Ready(id__)
+				[] executeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Ready})!SID_Move_Ready -> (
+						SKIP;
+						exited!y____!SID_Move_Ready -> SKIP);
+						State_Move_Ready(id__)
+				[] movePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Ready})!SID_Move_Ready -> (
+						SKIP;
+						exited!y____!SID_Move_Ready -> SKIP);
+						State_Move_Ready(id__)
+				[] moveVIn__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Ready})!SID_Move_Ready -> (
+						SKIP;
+						exited!y____!SID_Move_Ready -> SKIP);
+						State_Move_Ready(id__)
+				[] completeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Ready})!SID_Move_Ready -> (
+						SKIP;
+						exited!y____!SID_Move_Ready -> SKIP);
+						State_Move_Ready(id__)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Move_Ready})!SID_Move_Ready -> (State_Move_Ready_execute(id__,x____))
+	
+	CS_Move_HandleActuationCommands_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Move_Initialise,SID_Move_Deactivated,SID_Move_Startup,SID_Move_Ready,SID_Move_HandleActuationCommands,SID_Move_HandleSensorData,SID_Move_Cleanup},
+		y____ <- {SID_Move_HandleActuationCommands}
+	|}
+	
+	
+	Move_HandleActuationCommands_triggers = {|
+		deactivateMove__.TID_Move_ReadyToCleanup,
+		internal__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		executeMove__.TID_Move_ReadyToHandleActuationCommands,
+		internal__.TID_Move_HandleSensorDataToReady,
+		activateMove__.TID_Move_DeactivatedToStartup,
+		internal__.TID_Move_CleanupToDeactivated,
+		moveVIn__.TID_Move_ReadyReceivevIn,
+		movePriorityParam__.TID_Move_ReadyReceivePriorityParam,
+		internal__.TID_Move_StartupToReady,
+		movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam
+	|}
+	
+	State_Move_HandleActuationCommands(id__) = let
+		T_Move_HandleActuationCommandsToHandleSensorData(id__) = internal__!TID_Move_HandleActuationCommandsToHandleSensorData ->  exit.SID_Move_HandleActuationCommands.SID_Move_HandleActuationCommands -> SKIP;
+							SKIP;exited.SID_Move_HandleActuationCommands.SID_Move_HandleActuationCommands -> SKIP;
+							enter!SID_Move_HandleActuationCommands!SID_Move_HandleSensorData -> entered!SID_Move_HandleActuationCommands!SID_Move_HandleSensorData ->
+							State_Move_HandleActuationCommands(id__)
+		State_Move_HandleActuationCommands_execute(id__,o____) = get_vIn?vIn -> true&(platformMove.out!vIn -> SKIP); 
+			entered!o____!SID_Move_HandleActuationCommands ->
+			(SKIP; STOP /\ (
+				T_Move_HandleActuationCommandsToHandleSensorData(id__)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Move_HandleActuationCommands})!SID_Move_HandleActuationCommands -> (
+						SKIP;
+						exited!y____!SID_Move_HandleActuationCommands -> SKIP);
+						State_Move_HandleActuationCommands(id__)
+				[] platformMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_HandleActuationCommands})!SID_Move_HandleActuationCommands -> (
+						SKIP;
+						exited!y____!SID_Move_HandleActuationCommands -> SKIP);
+						State_Move_HandleActuationCommands(id__)
+				[] activateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_HandleActuationCommands})!SID_Move_HandleActuationCommands -> (
+						SKIP;
+						exited!y____!SID_Move_HandleActuationCommands -> SKIP);
+						State_Move_HandleActuationCommands(id__)
+				[] deactivateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_HandleActuationCommands})!SID_Move_HandleActuationCommands -> (
+						SKIP;
+						exited!y____!SID_Move_HandleActuationCommands -> SKIP);
+						State_Move_HandleActuationCommands(id__)
+				[] executeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_HandleActuationCommands})!SID_Move_HandleActuationCommands -> (
+						SKIP;
+						exited!y____!SID_Move_HandleActuationCommands -> SKIP);
+						State_Move_HandleActuationCommands(id__)
+				[] movePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_HandleActuationCommands})!SID_Move_HandleActuationCommands -> (
+						SKIP;
+						exited!y____!SID_Move_HandleActuationCommands -> SKIP);
+						State_Move_HandleActuationCommands(id__)
+				[] moveVIn__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_HandleActuationCommands})!SID_Move_HandleActuationCommands -> (
+						SKIP;
+						exited!y____!SID_Move_HandleActuationCommands -> SKIP);
+						State_Move_HandleActuationCommands(id__)
+				[] completeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_HandleActuationCommands})!SID_Move_HandleActuationCommands -> (
+						SKIP;
+						exited!y____!SID_Move_HandleActuationCommands -> SKIP);
+						State_Move_HandleActuationCommands(id__)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Move_HandleActuationCommands})!SID_Move_HandleActuationCommands -> (State_Move_HandleActuationCommands_execute(id__,x____))
+	
+	CS_Move_HandleSensorData_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Move_Initialise,SID_Move_Deactivated,SID_Move_Startup,SID_Move_Ready,SID_Move_HandleActuationCommands,SID_Move_HandleSensorData,SID_Move_Cleanup},
+		y____ <- {SID_Move_HandleSensorData}
+	|}
+	
+	
+	Move_HandleSensorData_triggers = {|
+		deactivateMove__.TID_Move_ReadyToCleanup,
+		internal__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		executeMove__.TID_Move_ReadyToHandleActuationCommands,
+		internal__.TID_Move_HandleSensorDataToReady,
+		activateMove__.TID_Move_DeactivatedToStartup,
+		internal__.TID_Move_CleanupToDeactivated,
+		moveVIn__.TID_Move_ReadyReceivevIn,
+		movePriorityParam__.TID_Move_ReadyReceivePriorityParam,
+		internal__.TID_Move_StartupToReady,
+		movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam
+	|}
+	
+	State_Move_HandleSensorData(id__) = let
+		T_Move_HandleSensorDataToReady(id__) = internal__!TID_Move_HandleSensorDataToReady ->  exit.SID_Move_HandleSensorData.SID_Move_HandleSensorData -> SKIP;
+							SKIP;exited.SID_Move_HandleSensorData.SID_Move_HandleSensorData -> SKIP;
+							true&(completeMove.out -> SKIP);enter!SID_Move_HandleSensorData!SID_Move_Ready -> entered!SID_Move_HandleSensorData!SID_Move_Ready ->
+							State_Move_HandleSensorData(id__)
+		State_Move_HandleSensorData_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Move_HandleSensorData ->
+			(SKIP; STOP /\ (
+				T_Move_HandleSensorDataToReady(id__)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Move_HandleSensorData})!SID_Move_HandleSensorData -> (
+						SKIP;
+						exited!y____!SID_Move_HandleSensorData -> SKIP);
+						State_Move_HandleSensorData(id__)
+				[] platformMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_HandleSensorData})!SID_Move_HandleSensorData -> (
+						SKIP;
+						exited!y____!SID_Move_HandleSensorData -> SKIP);
+						State_Move_HandleSensorData(id__)
+				[] activateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_HandleSensorData})!SID_Move_HandleSensorData -> (
+						SKIP;
+						exited!y____!SID_Move_HandleSensorData -> SKIP);
+						State_Move_HandleSensorData(id__)
+				[] deactivateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_HandleSensorData})!SID_Move_HandleSensorData -> (
+						SKIP;
+						exited!y____!SID_Move_HandleSensorData -> SKIP);
+						State_Move_HandleSensorData(id__)
+				[] executeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_HandleSensorData})!SID_Move_HandleSensorData -> (
+						SKIP;
+						exited!y____!SID_Move_HandleSensorData -> SKIP);
+						State_Move_HandleSensorData(id__)
+				[] movePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_HandleSensorData})!SID_Move_HandleSensorData -> (
+						SKIP;
+						exited!y____!SID_Move_HandleSensorData -> SKIP);
+						State_Move_HandleSensorData(id__)
+				[] moveVIn__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_HandleSensorData})!SID_Move_HandleSensorData -> (
+						SKIP;
+						exited!y____!SID_Move_HandleSensorData -> SKIP);
+						State_Move_HandleSensorData(id__)
+				[] completeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_ReadyReceivePriorityParam,TID_Move_StartupToReady,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_HandleSensorData})!SID_Move_HandleSensorData -> (
+						SKIP;
+						exited!y____!SID_Move_HandleSensorData -> SKIP);
+						State_Move_HandleSensorData(id__)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Move_HandleSensorData})!SID_Move_HandleSensorData -> (State_Move_HandleSensorData_execute(id__,x____))
+	
+	CS_Move_Cleanup_sync = {|
+		enter.y____.x____, 
+		entered.y____.x____, 
+		exit.y____.x____, 
+		exited.y____.x____,
+		enter.x____.y____, 
+		entered.x____.y____, 
+		exit.x____.y____, 
+		exited.x____.y____ |
+		x____ <- {SID_Move_Initialise,SID_Move_Deactivated,SID_Move_Startup,SID_Move_Ready,SID_Move_HandleActuationCommands,SID_Move_HandleSensorData,SID_Move_Cleanup},
+		y____ <- {SID_Move_Cleanup}
+	|}
+	
+	
+	Move_Cleanup_triggers = {|
+		deactivateMove__.TID_Move_ReadyToCleanup,
+		internal__.TID_Move_HandleActuationCommandsToHandleSensorData,
+		executeMove__.TID_Move_ReadyToHandleActuationCommands,
+		internal__.TID_Move_HandleSensorDataToReady,
+		activateMove__.TID_Move_DeactivatedToStartup,
+		internal__.TID_Move_CleanupToDeactivated,
+		moveVIn__.TID_Move_ReadyReceivevIn,
+		internal__.TID_Move_StartupToReady,
+		movePriorityParam__.TID_Move_ReadyReceivePriorityParam,
+		movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam
+	|}
+	
+	State_Move_Cleanup(id__) = let
+		T_Move_CleanupToDeactivated(id__) = internal__!TID_Move_CleanupToDeactivated ->  exit.SID_Move_Cleanup.SID_Move_Cleanup -> SKIP;
+							SKIP;exited.SID_Move_Cleanup.SID_Move_Cleanup -> SKIP;
+							enter!SID_Move_Cleanup!SID_Move_Deactivated -> entered!SID_Move_Cleanup!SID_Move_Deactivated ->
+							State_Move_Cleanup(id__)
+		State_Move_Cleanup_execute(id__,o____) = SKIP; 
+			entered!o____!SID_Move_Cleanup ->
+			(SKIP; STOP /\ (
+				T_Move_CleanupToDeactivated(id__)
+				[]
+				internal__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam}) -> exit?y____:diff(SIDS,{SID_Move_Cleanup})!SID_Move_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Move_Cleanup -> SKIP);
+						State_Move_Cleanup(id__)
+				[] platformMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Cleanup})!SID_Move_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Move_Cleanup -> SKIP);
+						State_Move_Cleanup(id__)
+				[] activateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Cleanup})!SID_Move_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Move_Cleanup -> SKIP);
+						State_Move_Cleanup(id__)
+				[] deactivateMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Cleanup})!SID_Move_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Move_Cleanup -> SKIP);
+						State_Move_Cleanup(id__)
+				[] executeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Cleanup})!SID_Move_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Move_Cleanup -> SKIP);
+						State_Move_Cleanup(id__)
+				[] movePriorityParam__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Cleanup})!SID_Move_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Move_Cleanup -> SKIP);
+						State_Move_Cleanup(id__)
+				[] moveVIn__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____?aux____ ->	exit?y____:diff(SIDS,{SID_Move_Cleanup})!SID_Move_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Move_Cleanup -> SKIP);
+						State_Move_Cleanup(id__)
+				[] completeMove__?x____:diff(ITIDS,{NULLTRANSITION__,TID_Move_ReadyToCleanup,TID_Move_HandleActuationCommandsToHandleSensorData,TID_Move_ReadyToHandleActuationCommands,TID_Move_HandleSensorDataToReady,TID_Move_DeactivatedToStartup,TID_Move_CleanupToDeactivated,TID_Move_ReadyReceivevIn,TID_Move_StartupToReady,TID_Move_ReadyReceivePriorityParam,TID_Move_DeactivatedReceivePriorityParam})?d____ ->	exit?y____:diff(SIDS,{SID_Move_Cleanup})!SID_Move_Cleanup -> (
+						SKIP;
+						exited!y____!SID_Move_Cleanup -> SKIP);
+						State_Move_Cleanup(id__)
+			))
+	within
+		enter?x____:diff(SIDS,{SID_Move_Cleanup})!SID_Move_Cleanup -> (State_Move_Cleanup_execute(id__,x____))
+	
+	
+	I_Move_Initial(id__) = let
+		T_Move_InitialToInitialise(id__) = internal__!TID_Move_InitialToInitialise -> enter!SID_Move!SID_Move_Initialise -> entered!SID_Move!SID_Move_Initialise ->
+		SKIP
+	within
+		T_Move_InitialToInitialise(id__)
+	
+	
+	State_Move_Initialise_R(id__) = 
+		State_Move_Initialise(id__)
+			[|diff(int_int,Move_Initialise_triggers)|]
+		SKIP
+			 		
+	State_Move_Deactivated_R(id__) = 
+		State_Move_Deactivated(id__)
+			[|diff(int_int,Move_Deactivated_triggers)|]
+		SKIP
+			 		
+	State_Move_Startup_R(id__) = 
+		State_Move_Startup(id__)
+			[|diff(int_int,Move_Startup_triggers)|]
+		SKIP
+			 		
+	State_Move_Ready_R(id__) = 
+		State_Move_Ready(id__)
+			[|diff(int_int,Move_Ready_triggers)|]
+		SKIP
+			 		
+	State_Move_HandleActuationCommands_R(id__) = 
+		State_Move_HandleActuationCommands(id__)
+			[|diff(int_int,Move_HandleActuationCommands_triggers)|]
+		SKIP
+			 		
+	State_Move_HandleSensorData_R(id__) = 
+		State_Move_HandleSensorData(id__)
+			[|diff(int_int,Move_HandleSensorData_triggers)|]
+		SKIP
+			 		
+	State_Move_Cleanup_R(id__) = 
+		State_Move_Cleanup(id__)
+			[|diff(int_int,Move_Cleanup_triggers)|]
+		SKIP
+			 		
+		
+	STM(id__) = (
+		I_Move_Initial(id__)
+			[|
+				{|enter.x____.y____, entered.x____.y____, exit.x____.y____, exited.x____.y____ |
+					x____ <- diff(SIDS,{SID_Move_Initialise,SID_Move_Deactivated,SID_Move_Startup,SID_Move_Ready,SID_Move_HandleActuationCommands,SID_Move_HandleSensorData,SID_Move_Cleanup}),
+					y____ <- {SID_Move_Initialise,SID_Move_Deactivated,SID_Move_Startup,SID_Move_Ready,SID_Move_HandleActuationCommands,SID_Move_HandleSensorData,SID_Move_Cleanup}
+			|}|]
+		(
+			State_Move_Initialise_R(id__)
+				[|inter(CS_Move_Initialise_sync,union(union(union(union(union(CS_Move_Deactivated_sync,CS_Move_Startup_sync),CS_Move_Ready_sync),CS_Move_HandleActuationCommands_sync),CS_Move_HandleSensorData_sync),CS_Move_Cleanup_sync))|]
+			(
+				State_Move_Deactivated_R(id__)
+					[|inter(CS_Move_Deactivated_sync,union(union(union(union(CS_Move_Startup_sync,CS_Move_Ready_sync),CS_Move_HandleActuationCommands_sync),CS_Move_HandleSensorData_sync),CS_Move_Cleanup_sync))|]
+				(
+					State_Move_Startup_R(id__)
+						[|inter(CS_Move_Startup_sync,union(union(union(CS_Move_Ready_sync,CS_Move_HandleActuationCommands_sync),CS_Move_HandleSensorData_sync),CS_Move_Cleanup_sync))|]
+					(
+						State_Move_Ready_R(id__)
+							[|inter(CS_Move_Ready_sync,union(union(CS_Move_HandleActuationCommands_sync,CS_Move_HandleSensorData_sync),CS_Move_Cleanup_sync))|]
+						(
+							State_Move_HandleActuationCommands_R(id__)
+								[|inter(CS_Move_HandleActuationCommands_sync,union(CS_Move_HandleSensorData_sync,CS_Move_Cleanup_sync))|]
+							(
+								State_Move_HandleSensorData_R(id__)
+									[|inter(CS_Move_HandleSensorData_sync,CS_Move_Cleanup_sync)|]
+								State_Move_Cleanup_R(id__)
+							)
+						)
+					)
+				)
+			)
+		)
+	)
+	
+	-- optimized memory process
+	channel getV_PriorityParam: core_nat
+	channel getV_vIn: Types_Velocities
+	channel getV_PriorityParamInitialised: core_boolean
+	
+	-- individual memory processes
+	Memory_PriorityParam(PriorityParam) = (
+		get_PriorityParam!PriorityParam -> Memory_PriorityParam(PriorityParam)
+		[]
+		getV_PriorityParam!PriorityParam -> Memory_PriorityParam(PriorityParam)
+		[]
+		set_PriorityParam?x__ -> Memory_PriorityParam(x__)
+		[]
+		movePriorityParam__!TID_Move_InitialiseReceivePriorityParam.in?PriorityParam -> Memory_PriorityParam(PriorityParam)
+		[]
+		movePriorityParam__!TID_Move_DeactivatedReceivePriorityParam.in?PriorityParam -> Memory_PriorityParam(PriorityParam)
+		[]
+		movePriorityParam__!TID_Move_ReadyReceivePriorityParam.in?PriorityParam -> Memory_PriorityParam(PriorityParam)
+	)
+	Memory_vIn(vIn) = (
+		get_vIn!vIn -> Memory_vIn(vIn)
+		[]
+		getV_vIn!vIn -> Memory_vIn(vIn)
+		[]
+		set_vIn?x__ -> Memory_vIn(x__)
+		[]
+		moveVIn__!TID_Move_ReadyReceivevIn.in?vIn -> Memory_vIn(vIn)
+	)
+	Memory_PriorityParamInitialised(PriorityParamInitialised) = (
+		get_PriorityParamInitialised!PriorityParamInitialised -> Memory_PriorityParamInitialised(PriorityParamInitialised)
+		[]
+		getV_PriorityParamInitialised!PriorityParamInitialised -> Memory_PriorityParamInitialised(PriorityParamInitialised)
+		[]
+		set_PriorityParamInitialised?x__ -> Memory_PriorityParamInitialised(x__)
+	)
+	
+	-- processes that read variables and offer transitions
+	MemoryTransitions(id__, PriorityParam
+				, vIn
+				, PriorityParamInitialised
+				) = 		
+	(internal__!TID_Move_InitialToInitialise -> SKIP
+	[]
+	(PriorityParamInitialised)&(internal__!TID_Move_InitialiseToDeactivated -> SKIP)
+	[]
+	activateMove__!TID_Move_DeactivatedToStartup.in -> SKIP
+	[]
+	internal__!TID_Move_StartupToReady -> SKIP
+	[]
+	executeMove__!TID_Move_ReadyToHandleActuationCommands.in -> SKIP
+	[]
+	internal__!TID_Move_HandleActuationCommandsToHandleSensorData -> SKIP
+	[]
+	internal__!TID_Move_HandleSensorDataToReady -> SKIP
+	[]
+	deactivateMove__!TID_Move_ReadyToCleanup.in -> SKIP
+	[]
+	internal__!TID_Move_CleanupToDeactivated -> SKIP
+	[]
+	moveVIn__!TID_Move_ReadyReceivevIn.in?vIn -> SKIP
+	[]
+	movePriorityParam__!TID_Move_InitialiseReceivePriorityParam.in?PriorityParam -> SKIP
+	[]
+	movePriorityParam__!TID_Move_DeactivatedReceivePriorityParam.in?PriorityParam -> SKIP
+	[]
+	movePriorityParam__!TID_Move_ReadyReceivePriorityParam.in?PriorityParam -> SKIP[]
+	set_PriorityParam?x__ -> SKIP[]
+	set_vIn?x__ -> SKIP[]
+	set_PriorityParamInitialised?x__ -> SKIP)
+	
+	MemoryTransitions_Move(id__) = (getV_PriorityParam?PriorityParam ->
+	getV_vIn?vIn ->
+	getV_PriorityParamInitialised?PriorityParamInitialised ->
+	MemoryTransitions(id__, PriorityParam
+				, vIn
+				, PriorityParamInitialised
+				); MemoryTransitions_Move(id__))			
+	
+	-- synchronisation, hiding and process sets 
+	MemoryVariablesProcesses_Move = Union(
+		{
+			{
+				(Memory_PriorityParam(0),{|set_PriorityParam,movePriorityParam__.TID_Move_InitialiseReceivePriorityParam,movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam,getV_PriorityParam,movePriorityParam__.TID_Move_ReadyReceivePriorityParam,get_PriorityParam|}),
+				(Memory_vIn((0,0)),{|moveVIn__.TID_Move_ReadyReceivevIn,getV_vIn,get_vIn,set_vIn|}),
+				(Memory_PriorityParamInitialised(false),{|get_PriorityParamInitialised,getV_PriorityParamInitialised,set_PriorityParamInitialised|})
+			}
+		}
+	)
+	
+	MemoryVariablesSyncSet = Union({
+		{|
+			moveVIn__.TID_Move_ReadyReceivevIn,
+			set_PriorityParam,
+			movePriorityParam__.TID_Move_InitialiseReceivePriorityParam,
+			movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam,
+			getV_vIn,
+			getV_PriorityParam,
+			movePriorityParam__.TID_Move_ReadyReceivePriorityParam,
+			getV_PriorityParamInitialised,
+			set_PriorityParamInitialised,
+			set_vIn
+		|}	
+	})
+	
+	MemoryVariablesHideSet = Union({
+		{|
+			getV_vIn,
+			getV_PriorityParam,
+			getV_PriorityParamInitialised
+		|}
+	})
+	
+	-- combined individual memory processes
+	MemoryVariables = ||| (P, alpha) : MemoryVariablesProcesses_Move @ P
+	
+	-- complete memory process	
+	MemoryN(id__) = sbisim(diamond((sbisim(diamond(MemoryVariables)) [| MemoryVariablesSyncSet |] sbisim(diamond(MemoryTransitions_Move(id__)))) \ MemoryVariablesHideSet))
+	
+	-- optimised memory
+	-- Sets of named elements identified according to transition conditions:
+	-- {}
+	-- {PriorityParamInitialised}
+	-- Summary of all identified named elements:
+	-- {
+	-- PriorityParam
+	-- vIn
+	-- PriorityParamInitialised
+	-- }
+	
+	-- Allocation plan:
+	-- 0:{}
+	--	=> {
+	--		TID_Move_ReadyToCleanup,
+	--		TID_Move_HandleActuationCommandsToHandleSensorData,
+	--		TID_Move_ReadyToHandleActuationCommands,
+	--		TID_Move_HandleSensorDataToReady,
+	--		TID_Move_DeactivatedToStartup,
+	--		TID_Move_CleanupToDeactivated,
+	--		TID_Move_InitialiseReceivePriorityParam,
+	--		TID_Move_InitialToInitialise,
+	--		TID_Move_ReadyReceivevIn,
+	--		TID_Move_StartupToReady,
+	--		TID_Move_ReadyReceivePriorityParam,
+	--		TID_Move_DeactivatedReceivePriorityParam}
+	-- 1:{PriorityParamInitialised}
+	--	=> {
+	--		TID_Move_InitialiseToDeactivated}
+	
+	-- Memory transition processes
+	MemoryTransitions_opt_0(id__) =
+	(
+		let
+			Update = Current(id__)
+			Current(id__)
+			 	   = 
+			 	   deactivateMove__!TID_Move_ReadyToCleanup.in -> Update
+			 	   []
+			 	   internal__!TID_Move_HandleActuationCommandsToHandleSensorData -> Update
+			 	   []
+			 	   executeMove__!TID_Move_ReadyToHandleActuationCommands.in -> Update
+			 	   []
+			 	   internal__!TID_Move_HandleSensorDataToReady -> Update
+			 	   []
+			 	   activateMove__!TID_Move_DeactivatedToStartup.in -> Update
+			 	   []
+			 	   internal__!TID_Move_CleanupToDeactivated -> Update
+			 	   []
+			 	   movePriorityParam__!TID_Move_InitialiseReceivePriorityParam.in?PriorityParam -> Update
+			 	   []
+			 	   internal__!TID_Move_InitialToInitialise -> Update
+			 	   []
+			 	   moveVIn__!TID_Move_ReadyReceivevIn.in?vIn -> Update
+			 	   []
+			 	   internal__!TID_Move_StartupToReady -> Update
+			 	   []
+			 	   movePriorityParam__!TID_Move_ReadyReceivePriorityParam.in?PriorityParam -> Update
+			 	   []
+			 	   movePriorityParam__!TID_Move_DeactivatedReceivePriorityParam.in?PriorityParam -> Update
+		within
+			Update
+	)
+	MemoryTransitions_opt_1(id__) =
+	(
+		let
+			Update = 
+			get_PriorityParamInitialised?PriorityParamInitialised ->
+			Current(id__,
+				 PriorityParamInitialised)
+			Current(id__,
+				 PriorityParamInitialised)
+			 	   = 
+			 	   (PriorityParamInitialised)&(internal__!TID_Move_InitialiseToDeactivated -> Update)
+			 	   	 
+			 	   	 []
+			 	   	 set_PriorityParamInitialised?x__ -> Update
+		within
+			Update
+	)
+	
+	-- Memory cell processes
+	Memory_opt_PriorityParam(x__) = ( 
+		get_PriorityParam!x__ -> Memory_opt_PriorityParam(x__)
+		[]
+		set_PriorityParam?x__ -> Memory_opt_PriorityParam(x__)
+	)
+	Memory_opt_vIn(x__) = ( 
+		get_vIn!x__ -> Memory_opt_vIn(x__)
+		[]
+		set_vIn?x__ -> Memory_opt_vIn(x__)
+	)
+	Memory_opt_PriorityParamInitialised(x__) = ( 
+		get_PriorityParamInitialised!x__ -> Memory_opt_PriorityParamInitialised(x__)
+		[]
+		set_PriorityParamInitialised?x__ -> Memory_opt_PriorityParamInitialised(x__)
+	)
+	
+	-- Composition of memory, StateMachine and Memory transition processes
+	
+	MemorySTM_opt(id__) =
+		dbisim(
+		  sbisim(Memory_opt_PriorityParamInitialised(false)
+		      	[| {|get_PriorityParamInitialised,set_PriorityParamInitialised|} |] 
+		      	sbisim(	
+		      	  dbisim(
+		      	    sbisim(sbisim(	
+		      	      dbisim(
+		      	        sbisim(dbisim(sbisim(Memory_opt_PriorityParam(0)
+		      	              	[| {|set_PriorityParam,get_PriorityParam|} |] 
+		      	              	dbisim(sbisim(Memory_opt_vIn((0,0))
+		      	              	      	[| {|get_vIn,set_vIn|} |] 
+		      	              	      	STM_core(id__)
+		      	              	      	)\ {|get_vIn,set_vIn|}
+		      	              	      )
+		      	              	)\ {|set_PriorityParam,get_PriorityParam|}
+		      	              )
+		      	          	  [| {|executeMove__.TID_Move_ReadyToHandleActuationCommands,moveVIn__.TID_Move_ReadyReceivevIn,movePriorityParam__.TID_Move_InitialiseReceivePriorityParam,movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam,activateMove__.TID_Move_DeactivatedToStartup,internal__.TID_Move_StartupToReady,internal__.TID_Move_HandleActuationCommandsToHandleSensorData,movePriorityParam__.TID_Move_ReadyReceivePriorityParam,internal__.TID_Move_CleanupToDeactivated,internal__.TID_Move_InitialToInitialise,internal__.TID_Move_HandleSensorDataToReady,deactivateMove__.TID_Move_ReadyToCleanup|} |]
+		      	          	  MemoryTransitions_opt_0(id__)
+		      	          	  )\{|internal__.TID_Move_StartupToReady,internal__.TID_Move_HandleActuationCommandsToHandleSensorData,internal__.TID_Move_CleanupToDeactivated,internal__.TID_Move_InitialToInitialise,internal__.TID_Move_HandleSensorDataToReady|})
+		      	          )
+		      	      	  [| {|internal__.TID_Move_InitialiseToDeactivated,set_PriorityParamInitialised|} |]
+		      	      	  MemoryTransitions_opt_1(id__)
+		      	      	  )\{|internal__.TID_Move_InitialiseToDeactivated|})
+		      	      )
+		      	) \ {|get_PriorityParamInitialised,set_PriorityParamInitialised|}
+		      )
+	
+	-- main process
+	
+	MachineMemorySyncSet = Union({
+		union(
+			union(
+				{|get_PriorityParam,set_PriorityParam,
+				get_vIn,set_vIn,
+				get_PriorityParamInitialised,set_PriorityParamInitialised|},
+				{||}
+			)
+				
+			,
+			{|internal__.TID_Move_InitialToInitialise,
+			internal__.TID_Move_InitialiseToDeactivated,
+			activateMove__.TID_Move_DeactivatedToStartup,
+			internal__.TID_Move_StartupToReady,
+			executeMove__.TID_Move_ReadyToHandleActuationCommands,
+			internal__.TID_Move_HandleActuationCommandsToHandleSensorData,
+			internal__.TID_Move_HandleSensorDataToReady,
+			deactivateMove__.TID_Move_ReadyToCleanup,
+			internal__.TID_Move_CleanupToDeactivated,
+			moveVIn__.TID_Move_ReadyReceivevIn,
+			movePriorityParam__.TID_Move_InitialiseReceivePriorityParam,
+			movePriorityParam__.TID_Move_DeactivatedReceivePriorityParam,
+			movePriorityParam__.TID_Move_ReadyReceivePriorityParam|}
+		)
+	})
+	
+	MachineMemoryHidingSet = Union({
+		union(
+			{|get_PriorityParam,set_PriorityParam,
+			get_vIn,set_vIn,
+			get_PriorityParamInitialised,set_PriorityParamInitialised|},
+			{||}
+		)
+	})
+	
+	MachineInternalEvents = {|
+		internal__
+	|}
+	
+	AUX(id__) = (
+		(
+			STM(id__)
+				[|MachineMemorySyncSet|]
+			sbisim(diamond(MemoryN(id__)))
+		)[[
+			platformMove__.x____ <- platformMove,
+			activateMove__.x____ <- activateMove,
+			deactivateMove__.x____ <- deactivateMove,
+			executeMove__.x____ <- executeMove,
+			movePriorityParam__.x____ <- movePriorityParam,
+			moveVIn__.x____ <- moveVIn,
+			completeMove__.x____ <- completeMove
+			| x____ <- TIDS
+		]]
+		\MachineMemoryHidingSet
+	)
+	[|{|terminate|}|>SKIP\MachineInternalEvents
+	
+	
+	STM_core(id__) = 
+		sbisim(diamond(STM(id__)))
+		
+	AUX_opt(id__) = 
+		(MemorySTM_opt(id__)
+		)[[
+			platformMove__.x____ <- platformMove,
+			activateMove__.x____ <- activateMove,
+			deactivateMove__.x____ <- deactivateMove,
+			executeMove__.x____ <- executeMove,
+			movePriorityParam__.x____ <- movePriorityParam,
+			moveVIn__.x____ <- moveVIn,
+			completeMove__.x____ <- completeMove
+			| x____ <- TIDS
+		]]
+		[|{|terminate|}|>SKIP\MachineInternalEvents
+
+	-- definition of the behaviour of state machines (default, optimised, visible, visible and optimised)
+	transparent diamond
+	transparent sbisim
+	transparent dbisim
+	transparent chase
+			
+	FVS__(id__) = AUX_opt(id__)
+	Dunopt__(id__) = AUX(id__) \ internal_events
+	D__(id__) = AUX_opt(id__) \ internal_events
+	O__(id__) = sbisim(diamond(D__(id__)))
+	VS__(id__) = ShowV(FVS__(id__))
+	VS_O__(id__) = sbisim(diamond(VS__(id__)))
+	HEXT__(id__) = O__(id__) [|shared_variable_events|] SKIP	
+endmodule

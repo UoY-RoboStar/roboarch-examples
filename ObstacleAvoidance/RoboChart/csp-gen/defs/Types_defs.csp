@@ -1,0 +1,21 @@
+-- data definitions used by platform:/resource/SkillsManagerUnorderedMultiTaskCoreFinalFlat/Types.rct
+nametype Types_Velocities = (core_real,core_real)
+Types_Velocities_linear((linear,angular)) = linear
+update_Types_Velocities_linear((linear,angular),v__) = (v__,angular)
+Types_Velocities_angular((linear,angular)) = angular
+update_Types_Velocities_angular((linear,angular),v__) = (linear,v__)
+datatype Types_Events = Types_Events_SAFETYDISTANCEREACHED
+Types_Events_is(Types_Events_SAFETYDISTANCEREACHED,Types_Events_SAFETYDISTANCEREACHED) = true
+Types_Events_is(_,Types_Events_SAFETYDISTANCEREACHED) = false
+
+datatype Types_Skills = Types_Skills_MOVE | Types_Skills_PROXIMITY | Types_Skills_EXPLORE
+Types_Skills_is(Types_Skills_MOVE,Types_Skills_MOVE) = true
+Types_Skills_is(_,Types_Skills_MOVE) = false
+Types_Skills_is(Types_Skills_PROXIMITY,Types_Skills_PROXIMITY) = true
+Types_Skills_is(_,Types_Skills_PROXIMITY) = false
+Types_Skills_is(Types_Skills_EXPLORE,Types_Skills_EXPLORE) = true
+Types_Skills_is(_,Types_Skills_EXPLORE) = false
+
+
+pre_Types_UpdateValue(value,newValue) = true
+	

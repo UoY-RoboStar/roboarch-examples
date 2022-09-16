@@ -1,0 +1,38 @@
+include "Executive.csp"
+
+
+
+-- generate Executive_Executive
+P_Executive_Executive = let
+	id__ = 0
+	
+	
+	
+	const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME = 2
+		
+within
+	Executive::Executive::O__(id__,
+			    const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME)
+
+assert P_Executive_Executive :[deadlock-free]	
+assert P_Executive_Executive;RUN({r__}) :[deadlock-free]
+assert P_Executive_Executive :[deterministic]
+assert P_Executive_Executive :[divergence-free]
+
+-- generate Executive_Executive_Simple
+P_Executive_Executive_Simple = let
+	id__ = 0
+	
+	
+	const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME = 2
+	
+within
+	Executive::Executive::Simple::O__(
+		id__,
+		const_Executive_Executive_Simple_EXECUTIVE_CYCLE_TIME
+	)
+assert P_Executive_Executive_Simple :[deadlock-free]	
+assert P_Executive_Executive_Simple;RUN({r__}) :[deadlock-free]
+assert P_Executive_Executive_Simple :[deterministic]
+assert P_Executive_Executive_Simple :[divergence-free]
+

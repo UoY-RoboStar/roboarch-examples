@@ -1,0 +1,96 @@
+package Control
+
+import Types::* 
+import Control::SkillsManager::* 
+import Control::DSkill::Move::* 
+import Control::CSkill::Explore::* 
+
+
+
+
+
+controller Control {
+	
+	
+	uses IControl
+	uses Motors
+
+	sref Move = Move
+
+	sref Explore = Explore
+
+	sref SkillsManager = SkillsManager
+
+	connection Explore on exploreVOut to SkillsManager on exploreVOut
+
+
+	connection Control on setExploreMaxSpeedParameter to SkillsManager on setExploreMaxSpeedParameter
+
+
+	connection Control on getExploreMaxSpeedParameter to SkillsManager on getExploreMaxSpeedParameter
+
+	connection Control on activate to SkillsManager on activate
+
+	connection Control on initiateEventMonitor to SkillsManager on initiateEventMonitor
+
+	connection SkillsManager on movePriorityParameter to Control on movePriorityParameter
+
+	connection Control on getExploreVOutValue to SkillsManager on getExploreVOutValue
+
+	connection Control on getExplorePriorityParameter to SkillsManager on getExplorePriorityParameter
+
+	connection Control on getMovePriorityParameter to SkillsManager on getMovePriorityParameter
+
+	connection SkillsManager on executeExplore to Explore on executeExplore
+
+	connection SkillsManager on activeSkills to Control on activeSkills
+
+	connection SkillsManager on activateExplore to Explore on activateExplore
+
+	connection Control on setMovePriorityParameter to SkillsManager on setMovePriorityParameter
+
+	connection Control on setExplorePriorityParameter to SkillsManager on setExplorePriorityParameter
+
+	connection SkillsManager on deactivateExplore to Explore on deactivateExplore
+
+	connection SkillsManager on movePriorityParam to Move on movePriorityParam
+
+	connection Control on getActiveSkills to SkillsManager on getActiveSkills
+
+
+	connection SkillsManager on exploreMaxSpeedParameter to Control on exploreMaxSpeedParameter
+
+	connection SkillsManager on executeMove to Move on executeMove
+
+
+	connection Control on deactivate to SkillsManager on deactivate
+
+	connection SkillsManager on exploreVOutValue to Control on exploreVOutValue
+
+	connection SkillsManager on moveVIn to Move on moveVIn
+
+	connection SkillsManager on deactivateMove to Move on deactivateMove
+
+
+	connection SkillsManager on exploreMaxSpeedParam to Explore on exploreMaxSpeedParam
+
+
+	connection Control on stopEventMonitor to SkillsManager on stopEventMonitor
+
+	connection SkillsManager on eventReply to Control on eventReply
+
+	connection SkillsManager on explorePriorityParameter to Control on explorePriorityParameter
+
+
+	connection SkillsManager on explorePriorityParam to Explore on explorePriorityParam
+
+
+	connection SkillsManager on activateMove to Move on activateMove
+
+	connection Move on platformMove to Control on move
+
+	connection Explore on completeExplore to SkillsManager on completeExplore
+	connection Move on completeMove to SkillsManager on completeMove
+
+}
+

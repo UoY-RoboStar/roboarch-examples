@@ -1,0 +1,9 @@
+include "defs/timed_definitions.csp"
+include "defs/robochart_defs.csp"
+include "defs/core_defs.csp"
+include "instantiations.csp"
+include "defs/Types_defs.csp"
+include "defs/Control_CSkill_Explore.csp"
+include "defs/Control_CSkill_Explore_defs.csp"
+		
+channel r__
